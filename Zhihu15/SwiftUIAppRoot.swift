@@ -466,6 +466,24 @@ struct SwiftUIPushDetailLink: View {
             EmptyView()
         }
         .hidden()
+        .onAppear {
+            syncTabBarVisibility()
+        }
+        .onChange(of: route?.id) { _ in
+            syncTabBarVisibility()
+        }
+    }
+
+    private func syncTabBarVisibility() {
+        let hidden = route != nil
+        AppTheme.setTabBarHidden(hidden)
+        // NavigationLink and SwiftUI's TabView update their UIKit hierarchy
+        // on separate layout passes. Re-apply after the destination has been
+        // scheduled so the safe-area calculation sees the final tab-bar
+        // visibility on the very first navigation.
+        DispatchQueue.main.async {
+            AppTheme.setTabBarHidden(hidden)
+        }
     }
 
     @ViewBuilder
@@ -491,6 +509,7 @@ struct SwiftUIDetailView: View {
     @State private var showVideo = false
     @State private var showWebContent = false
     @State private var webURL: URL?
+    @State private var isActionBarReady = false
 
     init(item: FeedItem, restoresTabBarOnDisappear: Bool = true) {
         self.item = item
@@ -545,7 +564,17 @@ struct SwiftUIDetailView: View {
             .padding(.bottom, 20)
         }
         .background(Color(uiColor: .systemBackground).ignoresSafeArea())
-        .safeAreaInset(edge: .bottom, spacing: 0) { actionBar }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            // Do not let the first layout pass measure the action bar together
+            // with the parent TabView's tab bar. The tab bar is hidden before
+            // this becomes visible, so safeAreaInset is calculated against
+            // the physical bottom safe area only.
+            if isActionBarReady {
+                actionBar
+            } else {
+                Color.clear.frame(height: 0)
+            }
+        }
         .background(
             SwiftUINavigationControllerResolver { navigationController in
                 navigationCoordinator.navigationController = navigationController
@@ -568,8 +597,17 @@ struct SwiftUIDetailView: View {
         .onAppear {
             AppTheme.setTabBarHidden(true)
             store.load()
+            isActionBarReady = false
+            DispatchQueue.main.async {
+                AppTheme.setTabBarHidden(true)
+                DispatchQueue.main.async {
+                    AppTheme.setTabBarHidden(true)
+                    isActionBarReady = true
+                }
+            }
         }
         .onDisappear {
+            isActionBarReady = false
             if restoresTabBarOnDisappear { AppTheme.setTabBarHidden(false) }
         }
         .alert(isPresented: Binding(

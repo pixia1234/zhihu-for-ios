@@ -62,10 +62,38 @@ enum AppTheme {
         let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
         for scene in scenes {
             for window in scene.windows {
-                if let tabBarController = findTabBarController(in: window.rootViewController) {
-                    tabBarController.tabBar.isHidden = hidden
+                guard let rootViewController = window.rootViewController else { continue }
+
+                // SwiftUI's TabView is backed by a UITabBar, but not
+                // necessarily by a UITabBarController. The old lookup only
+                // handled the UIKit controller case, so the first SwiftUI
+                // detail navigation could retain the TabView's bottom safe
+                // area even after the detail page appeared.
+                var tabBars: [UITabBar] = []
+                collectTabBars(in: rootViewController.view, into: &tabBars)
+                if let tabBarController = findTabBarController(in: rootViewController),
+                   !tabBars.contains(where: { $0 === tabBarController.tabBar }) {
+                    tabBars.append(tabBarController.tabBar)
+                }
+
+                UIView.performWithoutAnimation {
+                    tabBars.forEach { $0.isHidden = hidden }
+                    window.rootViewController?.view.setNeedsLayout()
+                    window.rootViewController?.view.layoutIfNeeded()
+                    window.setNeedsLayout()
+                    window.layoutIfNeeded()
                 }
             }
+        }
+    }
+
+    private static func collectTabBars(in view: UIView?, into tabBars: inout [UITabBar]) {
+        guard let view else { return }
+        if let tabBar = view as? UITabBar, !tabBars.contains(where: { $0 === tabBar }) {
+            tabBars.append(tabBar)
+        }
+        for subview in view.subviews {
+            collectTabBars(in: subview, into: &tabBars)
         }
     }
 
