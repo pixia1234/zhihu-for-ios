@@ -121,7 +121,7 @@ final class RemoteFeedRepository {
             let comments = int(target["comment_count"]) ?? 0
             let questionID = int(question?["id"]).map(Int64.init)
             let fallbackID = Int(UInt64(rawID.hashValue.magnitude) % UInt64(Int.max))
-            return FeedItem(id: Int(rawID) ?? fallbackID, kind: kind, author: authorName, authorRole: string(author?["headline"]) ?? "知乎创作者", avatarColor: color(for: rawID), title: plainText(title), excerpt: excerpt.isEmpty ? "打开查看完整内容" : excerpt, topic: topic, upvotes: upvotes, isVoted: isVoted, comments: comments, hasImage: thumbnailURL != nil, imageColor: AppTheme.zhihuBlue.withAlphaComponent(0.08), avatarURL: avatarURL, thumbnailURL: thumbnailURL, contentID: Int64(rawID), questionID: questionID)
+            return FeedItem(id: Int(rawID) ?? fallbackID, kind: kind, author: authorName, authorRole: string(author?["headline"]) ?? "知乎创作者", avatarColor: color(for: rawID), title: plainText(title), excerpt: excerpt.isEmpty ? "打开查看完整内容" : excerpt, topic: topic, upvotes: upvotes, comments: comments, hasImage: thumbnailURL != nil, imageColor: AppTheme.zhihuBlue.withAlphaComponent(0.08), isVoted: isVoted, avatarURL: avatarURL, thumbnailURL: thumbnailURL, contentID: Int64(rawID), questionID: questionID)
         }
         let paging = root["paging"] as? [String: Any]
         let nextURL = string(paging?["next"]).flatMap(URL.init(string:))
