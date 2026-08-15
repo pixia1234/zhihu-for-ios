@@ -417,28 +417,30 @@ struct SwiftUIProfileView: View {
     @State private var showAppLock = false
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                profileHeader
-                if store.isLoggedIn {
-                    profileTabs
-                    if let error = store.errorMessage {
-                        SwiftUIErrorCard(message: error) { store.load(tab: store.tab) }
+        GeometryReader { geometry in
+            ScrollView(.vertical, showsIndicators: true) {
+                VStack(alignment: .leading, spacing: 16) {
+                    profileHeader
+                    if store.isLoggedIn {
+                        profileTabs
+                        if let error = store.errorMessage {
+                            SwiftUIErrorCard(message: error) { store.load(tab: store.tab) }
+                        }
+                        if store.isLoading && store.items.isEmpty { ProgressView("正在读取你的内容").frame(maxWidth: .infinity).padding(30) }
+                        ForEach(store.items, id: \.id) { item in
+                            SwiftUIFeedCard(item: item, onOpen: { detailRoute = SwiftUIDetailRoute(item: item) })
+                        }
+                        if store.items.isEmpty && !store.isLoading { SwiftUIEmptyState(title: "这里还没有公开内容", systemImage: "doc.text") }
+                    } else {
+                        SwiftUIEmptyState(title: "登录后同步你的知乎内容", systemImage: "person.crop.circle")
+                        Button("登录知乎") { showLogin = true }.buttonStyle(.borderedProminent).frame(maxWidth: .infinity)
                     }
-                    if store.isLoading && store.items.isEmpty { ProgressView("正在读取你的内容").frame(maxWidth: .infinity).padding(30) }
-                    ForEach(store.items, id: \.id) { item in
-                        SwiftUIFeedCard(item: item, onOpen: { detailRoute = SwiftUIDetailRoute(item: item) })
-                    }
-                    if store.items.isEmpty && !store.isLoading { SwiftUIEmptyState(title: "这里还没有公开内容", systemImage: "doc.text") }
-                } else {
-                    SwiftUIEmptyState(title: "登录后同步你的知乎内容", systemImage: "person.crop.circle")
-                    Button("登录知乎") { showLogin = true }.buttonStyle(.borderedProminent).frame(maxWidth: .infinity)
+                    management
                 }
-                management
+                .frame(width: min(860, max(0, geometry.size.width - 32)), alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .center)
+                .padding(.vertical, 14)
             }
-            .frame(maxWidth: 860, alignment: .leading)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 16).padding(.vertical, 14)
         }
         .background(Color(uiColor: .systemGroupedBackground).ignoresSafeArea())
         .navigationTitle("我的")
@@ -470,7 +472,6 @@ struct SwiftUIProfileView: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                Spacer()
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             if let profile = store.remoteProfile {

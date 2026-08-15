@@ -31,8 +31,8 @@ final class DetailViewController: UIViewController {
         if item.kind == .video { actions.insert(UIBarButtonItem(title: "播放", style: .plain, target: self, action: #selector(openVideo)), at: 0) }
         actions.append(UIBarButtonItem(image: UIImage(systemName: "safari"), style: .plain, target: self, action: #selector(openCanonicalURL)))
         navigationItem.rightBarButtonItems = actions
-        setupScrollView()
         setupActionBar()
+        setupScrollView()
         buildContent()
         loadRemoteContent()
     }
