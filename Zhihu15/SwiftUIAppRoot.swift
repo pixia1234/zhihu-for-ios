@@ -482,10 +482,11 @@ struct SwiftUIDetailView: View {
     let item: FeedItem
     let restoresTabBarOnDisappear: Bool
     @StateObject private var store: SwiftUIDetailStore
+    @StateObject private var navigationCoordinator: SwiftUIDetailNavigationCoordinator
     @State private var richContentHeight: CGFloat = 28
     @State private var showLogin = false
     @State private var showComments = false
-    @State private var showAnswers = false
+    @State private var showAnswersSheet = false
     @State private var showCollectionPicker = false
     @State private var showVideo = false
     @State private var showWebContent = false
@@ -495,6 +496,7 @@ struct SwiftUIDetailView: View {
         self.item = item
         self.restoresTabBarOnDisappear = restoresTabBarOnDisappear
         _store = StateObject(wrappedValue: SwiftUIDetailStore(item: item))
+        _navigationCoordinator = StateObject(wrappedValue: SwiftUIDetailNavigationCoordinator())
     }
 
     var body: some View {
@@ -519,7 +521,7 @@ struct SwiftUIDetailView: View {
                 .frame(minHeight: richContentHeight, alignment: .top)
                 Divider()
                 if item.kind == .question {
-                    Button { showAnswers = true } label: {
+                    Button { openAnswers() } label: {
                         Label("查看全部回答", systemImage: "chevron.right")
                             .font(.headline)
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -527,7 +529,7 @@ struct SwiftUIDetailView: View {
                     .buttonStyle(.plain)
                     .foregroundColor(Color(red: 0.08, green: 0.38, blue: 0.86))
                 } else if item.kind == .answer, item.questionID != nil {
-                    Button { showAnswers = true } label: {
+                    Button { openAnswers() } label: {
                         Label("继续查看下一个回答", systemImage: "chevron.right")
                             .font(.headline)
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -544,6 +546,11 @@ struct SwiftUIDetailView: View {
         }
         .background(Color(uiColor: .systemBackground).ignoresSafeArea())
         .safeAreaInset(edge: .bottom, spacing: 0) { actionBar }
+        .background(
+            SwiftUINavigationControllerResolver { navigationController in
+                navigationCoordinator.navigationController = navigationController
+            }
+        )
         .navigationTitle(store.title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -573,7 +580,7 @@ struct SwiftUIDetailView: View {
         }
         .sheet(isPresented: $showLogin) { UIKitNavigationScreen { LoginViewController() } }
         .sheet(isPresented: $showComments) { UIKitNavigationScreen { CommentsViewController(item: item) } }
-        .sheet(isPresented: $showAnswers) {
+        .sheet(isPresented: $showAnswersSheet) {
             UIKitNavigationScreen { QuestionAnswersViewController(question: item, excludingAnswerID: item.kind == .answer ? item.contentID : nil) }
         }
         .sheet(isPresented: $showVideo) { UIKitNavigationScreen { VideoPlaybackViewController(item: item) } }
@@ -583,6 +590,19 @@ struct SwiftUIDetailView: View {
             }
         }
         .sheet(isPresented: $showCollectionPicker) { collectionPicker }
+    }
+
+    private func openAnswers() {
+        let controller = QuestionAnswersViewController(
+            question: item,
+            excludingAnswerID: item.kind == .answer ? item.contentID : nil
+        )
+        controller.hidesBottomBarWhenPushed = true
+        if let navigationController = navigationCoordinator.navigationController {
+            navigationController.pushViewController(controller, animated: true)
+        } else {
+            showAnswersSheet = true
+        }
     }
 
     private var authorHeader: some View {
@@ -639,7 +659,7 @@ struct SwiftUIDetailView: View {
             }
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 7)
+        .padding(.vertical, 4)
         .background(.ultraThinMaterial)
         .overlay(Divider(), alignment: .top)
     }
@@ -698,11 +718,50 @@ struct SwiftUIDetailActionButton: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.75)
                 .frame(maxWidth: .infinity)
-                .frame(height: 42)
+                .frame(height: 40)
                 .background(Color(red: 0.08, green: 0.38, blue: 0.86).opacity(0.08), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
         }
         .buttonStyle(.plain)
         .foregroundColor(Color(red: 0.08, green: 0.38, blue: 0.86))
+    }
+}
+
+final class SwiftUIDetailNavigationCoordinator: ObservableObject {
+    weak var navigationController: UINavigationController?
+}
+
+struct SwiftUINavigationControllerResolver: UIViewControllerRepresentable {
+    let onResolve: (UINavigationController) -> Void
+
+    func makeUIViewController(context: Context) -> ResolverViewController {
+        ResolverViewController(onResolve: onResolve)
+    }
+
+    func updateUIViewController(_ uiViewController: ResolverViewController, context: Context) {
+        uiViewController.onResolve = onResolve
+        uiViewController.resolve()
+    }
+
+    final class ResolverViewController: UIViewController {
+        var onResolve: (UINavigationController) -> Void
+
+        init(onResolve: @escaping (UINavigationController) -> Void) {
+            self.onResolve = onResolve
+            super.init(nibName: nil, bundle: nil)
+        }
+
+        required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+        override func didMove(toParent parent: UIViewController?) {
+            super.didMove(toParent: parent)
+            resolve()
+        }
+
+        func resolve() {
+            if let navigationController {
+                onResolve(navigationController)
+            }
+        }
     }
 }
 
