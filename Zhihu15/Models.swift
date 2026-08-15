@@ -20,10 +20,10 @@ struct FeedItem {
     let comments: Int
     let hasImage: Bool
     let imageColor: UIColor
-    let avatarURL: URL? = nil
-    let thumbnailURL: URL? = nil
-    let contentID: Int64? = nil
-    let questionID: Int64? = nil
+    let avatarURL: URL?
+    let thumbnailURL: URL?
+    let contentID: Int64?
+    let questionID: Int64?
 
     init(
         id: Int,
