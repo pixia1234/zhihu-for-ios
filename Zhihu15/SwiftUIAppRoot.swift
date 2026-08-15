@@ -152,9 +152,8 @@ struct SwiftUIHomeView: View {
                     ProgressView("正在加载知乎内容").frame(maxWidth: .infinity).padding(.vertical, 40)
                 }
                 ForEach(store.items, id: \.id) { item in
-                    SwiftUIFeedCard(
+                    SwiftUIFeedCardLink(
                         item: item,
-                        onOpen: { detailRoute = SwiftUIDetailRoute(item: item) },
                         onVote: {
                             store.vote(item: item) { result in
                                 switch result {
@@ -203,7 +202,10 @@ struct SwiftUIHomeView: View {
                     .accessibilityLabel("知乎消息")
             }
         }
-        .onAppear { if !store.hasLoaded { store.load() } }
+        .onAppear {
+            AppTheme.setTabBarHidden(false)
+            if !store.hasLoaded { store.load() }
+        }
         .onReceive(autoRefreshTimer) { _ in
             Task { await store.refresh() }
         }
@@ -215,7 +217,7 @@ struct SwiftUIHomeView: View {
                 detailRoute = SwiftUIDetailRoute(item: item)
             }
         }
-        .background(SwiftUIPushDetailLink(route: $detailRoute))
+        .background(SwiftUIHandoffDetailLink(route: $detailRoute))
         .sheet(isPresented: $showMessages) {
             UIKitNavigationScreen { MessagesViewController() }
         }
@@ -270,7 +272,6 @@ struct SwiftUIHomeView: View {
 
 struct SwiftUIFeedCard: View {
     let item: FeedItem
-    var onOpen: (() -> Void)? = nil
     var onVote: (() -> Void)? = nil
     var onComment: (() -> Void)? = nil
     var onShare: (() -> Void)? = nil
@@ -327,7 +328,23 @@ struct SwiftUIFeedCard: View {
         .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Color(uiColor: .separator).opacity(0.16)))
         .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .onTapGesture { onOpen?() }
+    }
+}
+
+/// The normal content path uses a real NavigationLink. A hidden, shared
+/// NavigationLink is reserved for external Handoff events only; using it for
+/// every card makes SwiftUI reuse the destination toolbar across pushes.
+struct SwiftUIFeedCardLink: View {
+    let item: FeedItem
+    var onVote: (() -> Void)? = nil
+    var onComment: (() -> Void)? = nil
+    var onShare: (() -> Void)? = nil
+
+    var body: some View {
+        NavigationLink(destination: SwiftUIDetailView(item: item)) {
+            SwiftUIFeedCard(item: item, onVote: onVote, onComment: onComment, onShare: onShare)
+        }
+        .buttonStyle(.plain)
     }
 }
 
@@ -463,14 +480,8 @@ final class SwiftUIDetailStore: ObservableObject {
     }
 }
 
-struct SwiftUIPushDetailLink: View {
+struct SwiftUIHandoffDetailLink: View {
     @Binding var route: SwiftUIDetailRoute?
-    let restoresTabBarOnPop: Bool
-
-    init(route: Binding<SwiftUIDetailRoute?>, restoresTabBarOnPop: Bool = true) {
-        _route = route
-        self.restoresTabBarOnPop = restoresTabBarOnPop
-    }
 
     var body: some View {
         NavigationLink(
@@ -480,9 +491,7 @@ struct SwiftUIPushDetailLink: View {
                 set: { isActive in
                     if !isActive {
                         route = nil
-                        if restoresTabBarOnPop {
-                            AppTheme.setTabBarHidden(false)
-                        }
+                        AppTheme.setTabBarHidden(false)
                     }
                 }
             )
@@ -495,7 +504,7 @@ struct SwiftUIPushDetailLink: View {
     @ViewBuilder
     private var destination: some View {
         if let route = route {
-            SwiftUIDetailView(item: route.item, restoresTabBarOnDisappear: false)
+            SwiftUIDetailView(item: route.item)
         } else {
             EmptyView()
         }
@@ -504,32 +513,23 @@ struct SwiftUIPushDetailLink: View {
 
 struct SwiftUIDetailView: View {
     let item: FeedItem
-    let restoresTabBarOnDisappear: Bool
     @StateObject private var store: SwiftUIDetailStore
     @State private var richContentHeight: CGFloat = 28
     @State private var showLogin = false
     @State private var showComments = false
-    @State private var showAnswers = false
     @State private var showCollectionPicker = false
     @State private var showVideo = false
     @State private var showWebContent = false
     @State private var webURL: URL?
 
-    init(item: FeedItem, restoresTabBarOnDisappear: Bool = true) {
+    init(item: FeedItem) {
         self.item = item
-        self.restoresTabBarOnDisappear = restoresTabBarOnDisappear
         _store = StateObject(wrappedValue: SwiftUIDetailStore(item: item))
     }
 
     var body: some View {
         detailScrollView
         .background(Color(uiColor: .systemBackground).ignoresSafeArea())
-        .background(
-            NavigationLink(destination: answersDestination, isActive: $showAnswers) {
-                EmptyView()
-            }
-            .hidden()
-        )
         .navigationTitle(store.title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -554,9 +554,6 @@ struct SwiftUIDetailView: View {
         .onAppear {
             AppTheme.setTabBarHidden(true)
             store.load()
-        }
-        .onDisappear {
-            if restoresTabBarOnDisappear { AppTheme.setTabBarHidden(false) }
         }
         .alert(isPresented: Binding(
             get: { store.actionMessage != nil },
@@ -609,21 +606,9 @@ struct SwiftUIDetailView: View {
                 .frame(minHeight: richContentHeight, alignment: .top)
                 Divider()
                 if item.kind == .question {
-                    Button { openAnswers() } label: {
-                        Label("查看全部回答", systemImage: "chevron.right")
-                            .font(.headline)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundColor(Color(red: 0.08, green: 0.38, blue: 0.86))
+                    answersAction(title: "查看全部回答")
                 } else if item.kind == .answer, item.questionID != nil {
-                    Button { openAnswers() } label: {
-                        Label("继续查看下一个回答", systemImage: "chevron.right")
-                            .font(.headline)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundColor(Color(red: 0.08, green: 0.38, blue: 0.86))
+                    answersAction(title: "继续查看下一个回答")
                 }
             }
             .frame(maxWidth: 860, alignment: .leading)
@@ -635,12 +620,27 @@ struct SwiftUIDetailView: View {
         .background(Color(uiColor: .systemBackground).ignoresSafeArea())
     }
 
-    private func openAnswers() {
-        guard answersQuestion != nil else {
-            store.actionMessage = "缺少问题 ID，暂时无法加载全部回答"
-            return
+    @ViewBuilder
+    private func answersAction(title: String) -> some View {
+        if answersQuestion != nil {
+            NavigationLink(destination: answersDestination) {
+                answersLabel(title: title)
+            }
+        } else {
+            Button {
+                store.actionMessage = "缺少问题 ID，暂时无法加载全部回答"
+            } label: {
+                answersLabel(title: title)
+            }
         }
-        showAnswers = true
+    }
+
+    private func answersLabel(title: String) -> some View {
+        Label(title, systemImage: "chevron.right")
+            .font(.headline)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+            .foregroundColor(Color(red: 0.08, green: 0.38, blue: 0.86))
     }
 
     private var answersQuestion: FeedItem? {
@@ -897,7 +897,6 @@ struct SwiftUIAnswersView: View {
     let question: FeedItem
     let excludingAnswerID: Int64?
     @StateObject private var store: SwiftUIAnswersStore
-    @State private var detailRoute: SwiftUIDetailRoute?
     @State private var commentsItem: FeedItem?
     @State private var shareItem: FeedItem?
     @State private var actionMessage: String?
@@ -927,9 +926,8 @@ struct SwiftUIAnswersView: View {
                         .padding(.vertical, 40)
                 }
                 ForEach(store.items, id: \.id) { item in
-                    SwiftUIFeedCard(
+                    SwiftUIFeedCardLink(
                         item: item,
-                        onOpen: { detailRoute = SwiftUIDetailRoute(item: item) },
                         onVote: {
                             store.vote(item: item) { result in
                                 if case let .failure(error) = result {
@@ -972,7 +970,6 @@ struct SwiftUIAnswersView: View {
             AppTheme.setTabBarHidden(true)
             if !store.hasLoaded { store.load() }
         }
-        .background(SwiftUIPushDetailLink(route: $detailRoute, restoresTabBarOnPop: false))
         .sheet(isPresented: Binding(
             get: { commentsItem != nil },
             set: { if !$0 { commentsItem = nil } }
@@ -1090,7 +1087,6 @@ struct CachedAvatar: View {
 
 struct SwiftUIProfileView: View {
     @StateObject private var store = SwiftUIProfileStore()
-    @State private var detailRoute: SwiftUIDetailRoute?
     @State private var showLogin = false
     @State private var showHistory = false
     @State private var showAccounts = false
@@ -1108,7 +1104,7 @@ struct SwiftUIProfileView: View {
                         }
                         if store.isLoading && store.items.isEmpty { ProgressView("正在读取你的内容").frame(maxWidth: .infinity).padding(30) }
                         ForEach(store.items, id: \.id) { item in
-                            SwiftUIFeedCard(item: item, onOpen: { detailRoute = SwiftUIDetailRoute(item: item) })
+                            SwiftUIFeedCardLink(item: item)
                         }
                         if store.items.isEmpty && !store.isLoading { SwiftUIEmptyState(title: "这里还没有公开内容", systemImage: "doc.text") }
                     } else {
@@ -1129,12 +1125,14 @@ struct SwiftUIProfileView: View {
                 Button(store.isLoggedIn ? "退出" : "登录") { store.isLoggedIn ? store.signOut() : (showLogin = true) }
             }
         }
-        .onAppear { store.load() }
+        .onAppear {
+            AppTheme.setTabBarHidden(false)
+            store.load()
+        }
         .sheet(isPresented: $showLogin) { UIKitNavigationScreen { LoginViewController() } }
         .sheet(isPresented: $showHistory) { UIKitNavigationScreen { HistoryViewController() } }
         .sheet(isPresented: $showAccounts) { UIKitNavigationScreen { AccountListViewController() } }
         .sheet(isPresented: $showAppLock) { UIKitNavigationScreen { AppLockSettingsViewController() } }
-        .background(SwiftUIPushDetailLink(route: $detailRoute))
     }
 
     private var profileHeader: some View {
@@ -1258,13 +1256,14 @@ final class SwiftUIProfileStore: ObservableObject {
 
 struct SwiftUICollectionView: View {
     @State private var items = Array(SampleData.recommendations.prefix(3))
-    @State private var detailRoute: SwiftUIDetailRoute?
     var body: some View {
-        ScrollView { LazyVStack(spacing: 14) { ForEach(items, id: \.id) { item in SwiftUIFeedCard(item: item, onOpen: { detailRoute = SwiftUIDetailRoute(item: item) }) } }.padding(16) }
+        ScrollView { LazyVStack(spacing: 14) { ForEach(items, id: \.id) { item in SwiftUIFeedCardLink(item: item) } }.padding(16) }
             .background(Color(uiColor: .systemGroupedBackground).ignoresSafeArea())
             .navigationTitle("收藏")
-            .onAppear { load() }
-            .background(SwiftUIPushDetailLink(route: $detailRoute))
+            .onAppear {
+                AppTheme.setTabBarHidden(false)
+                load()
+            }
     }
     private func load() { guard ZhihuAccountStore.shared.load()?.isLoggedIn == true else { return }; RemoteLibraryRepository.shared.fetchSavedItems { result in if case let .success(value) = result, !value.isEmpty { items = value } } }
 }
@@ -1272,17 +1271,15 @@ struct SwiftUICollectionView: View {
 struct SwiftUISearchView: View {
     @State private var query = ""
     @State private var results: [FeedItem] = []
-    @State private var detailRoute: SwiftUIDetailRoute?
     var body: some View {
         VStack(spacing: 0) {
             TextField("搜索问题、话题或用户", text: $query).textFieldStyle(.roundedBorder).padding()
             if results.isEmpty { SwiftUIEmptyState(title: query.isEmpty ? "输入关键词开始探索" : "没有找到相关内容", systemImage: "magnifyingglass").frame(maxHeight: .infinity) }
-            else { ScrollView { LazyVStack(spacing: 14) { ForEach(results, id: \.id) { item in SwiftUIFeedCard(item: item, onOpen: { detailRoute = SwiftUIDetailRoute(item: item) }) }.padding(16) } } }
+            else { ScrollView { LazyVStack(spacing: 14) { ForEach(results, id: \.id) { item in SwiftUIFeedCardLink(item: item) }.padding(16) } } }
         }
         .background(Color(uiColor: .systemGroupedBackground).ignoresSafeArea())
         .navigationTitle("搜索")
         .onChange(of: query) { value in search(value) }
-        .background(SwiftUIPushDetailLink(route: $detailRoute))
     }
     private func search(_ value: String) { let text = value.trimmingCharacters(in: .whitespacesAndNewlines); guard !text.isEmpty else { results = []; return }; RemoteFeedRepository.shared.search(query: text) { result in if case let .success(items) = result { results = items } } }
 }
