@@ -10,10 +10,12 @@ final class DetailViewController: UIViewController {
     private let richContentView = RichContentView()
     private let primaryActionButton = UIButton(type: .system)
     private let managesNavigationBar: Bool
+    private var collectionActionButton: UIButton?
     private var canonicalURL: URL?
     private var displayedUpvotes: Int
     private var hasVoted = false
     private var isVoting = false
+    private var didHideTabBar = false
 
     init(item: FeedItem, managesNavigationBar: Bool = false) {
         self.item = item
@@ -21,6 +23,7 @@ final class DetailViewController: UIViewController {
         self.displayedUpvotes = item.upvotes
         self.hasVoted = item.isVoted
         super.init(nibName: nil, bundle: nil)
+        hidesBottomBarWhenPushed = true
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
@@ -52,6 +55,22 @@ final class DetailViewController: UIViewController {
         // make the answer navigation bar taller.
         navigationItem.prompt = nil
         navigationItem.largeTitleDisplayMode = .never
+        if let tabBar = tabBarController?.tabBar {
+            tabBar.isHidden = true
+            didHideTabBar = true
+        }
+        AppTheme.setTabBarHidden(true)
+    }
+
+    override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
+        guard didHideTabBar else { return }
+        let remainsInNavigationStack = navigationController?.viewControllers.contains { $0 === self } == true
+        if isMovingFromParent || navigationController?.isBeingDismissed == true || !remainsInNavigationStack {
+            tabBarController?.tabBar.isHidden = false
+            AppTheme.setTabBarHidden(false)
+            didHideTabBar = false
+        }
     }
 
     deinit {
@@ -92,10 +111,7 @@ final class DetailViewController: UIViewController {
     }
 
     private func makeNavigationBarItems() -> [UIBarButtonItem] {
-        var actions = [
-            UIBarButtonItem(image: UIImage(systemName: "bubble.left"), style: .plain, target: self, action: #selector(openComments))
-        ]
-        actions[0].accessibilityLabel = "评论"
+        var actions: [UIBarButtonItem] = []
         if item.kind == .video {
             let play = UIBarButtonItem(image: UIImage(systemName: "play.circle"), style: .plain, target: self, action: #selector(openVideo))
             play.accessibilityLabel = "播放"
@@ -105,10 +121,6 @@ final class DetailViewController: UIViewController {
         browser.accessibilityLabel = "在知乎打开"
         actions.append(browser)
         return actions
-    }
-
-    func openCommentsFromNavigationHost() {
-        openComments()
     }
 
     func openCanonicalURLFromNavigationHost() {
@@ -151,11 +163,15 @@ final class DetailViewController: UIViewController {
         primaryActionButton.contentEdgeInsets = UIEdgeInsets(top: 11, left: 4, bottom: 11, right: 4)
         primaryActionButton.addTarget(self, action: #selector(primaryAction), for: .touchUpInside)
         actionsStack.addArrangedSubview(primaryActionButton)
-        let commentsButton = actionButton(title: "\(item.comments > 0 ? item.comments : 0) 评论", image: "bubble.left")
+        let commentsButton = actionButton(title: "\(max(0, item.comments))", image: "bubble.left")
+        commentsButton.accessibilityLabel = "评论，\(max(0, item.comments))"
         commentsButton.addTarget(self, action: #selector(openComments), for: .touchUpInside)
         actionsStack.addArrangedSubview(commentsButton)
-        let collectionButton = actionButton(title: "收藏", image: "bookmark")
+        let collectionButton = actionButton(title: "", image: "bookmark")
+        collectionButton.setTitle("0", for: .normal)
+        collectionButton.accessibilityLabel = "收藏"
         collectionButton.addTarget(self, action: #selector(openCollectionPicker), for: .touchUpInside)
+        collectionActionButton = collectionButton
         actionsStack.addArrangedSubview(collectionButton)
     }
 
@@ -353,6 +369,7 @@ final class DetailViewController: UIViewController {
     }
 
     private func push(_ controller: UIViewController) {
+        controller.hidesBottomBarWhenPushed = true
         if let navigationController {
             navigationController.pushViewController(controller, animated: true)
         } else {
@@ -402,17 +419,13 @@ final class DetailViewController: UIViewController {
 
     private func updatePrimaryActionTitle() {
         guard item.kind != .question else {
-            primaryActionButton.setTitle("关注问题", for: .normal)
+            primaryActionButton.setTitle(nil, for: .normal)
+            primaryActionButton.accessibilityLabel = "关注问题"
             return
         }
-        let title: String
-        if hasVoted {
-            title = displayedUpvotes > 0 ? "\(displayedUpvotes) 已赞同" : "已赞同"
-        } else {
-            title = displayedUpvotes > 0 ? "\(displayedUpvotes) 赞同" : "赞同"
-        }
-        primaryActionButton.setTitle(title, for: .normal)
+        primaryActionButton.setTitle("\(max(0, displayedUpvotes))", for: .normal)
         primaryActionButton.setImage(UIImage(systemName: hasVoted ? "arrow.up.circle.fill" : "arrow.up"), for: .normal)
+        primaryActionButton.accessibilityLabel = hasVoted ? "取消赞同，\(max(0, displayedUpvotes))" : "赞同，\(max(0, displayedUpvotes))"
     }
 
     @objc private func openCollectionPicker() {
@@ -429,13 +442,24 @@ final class DetailViewController: UIViewController {
                     self.showActionResult(.failure(ZhihuSessionError.malformedPayload), success: "")
                     return
                 }
+                let selectedCount = options.filter(\.isSelected).count
+                self.collectionActionButton?.setTitle("\(selectedCount)", for: .normal)
+                self.collectionActionButton?.setImage(UIImage(systemName: selectedCount > 0 ? "bookmark.fill" : "bookmark"), for: .normal)
+                self.collectionActionButton?.accessibilityLabel = "收藏，\(selectedCount) 个收藏夹"
                 let alert = UIAlertController(title: "收藏到", message: nil, preferredStyle: .actionSheet)
                 for option in options {
                     let title = option.isSelected ? "✓ \(option.title)（移除）" : option.title
                     alert.addAction(UIAlertAction(title: title, style: .default) { [weak self] _ in
                         guard let self = self else { return }
                         ZhihuActionRepository.shared.setCollection(!option.isSelected, collectionID: option.id, for: self.item) { [weak self] result in
-                            self?.showActionResult(result, success: option.isSelected ? "已从收藏夹移除" : "已加入收藏夹")
+                            guard let self = self else { return }
+                            if case .success = result {
+                                let count = max(0, selectedCount + (option.isSelected ? -1 : 1))
+                                self.collectionActionButton?.setTitle("\(count)", for: .normal)
+                                self.collectionActionButton?.setImage(UIImage(systemName: count > 0 ? "bookmark.fill" : "bookmark"), for: .normal)
+                                self.collectionActionButton?.accessibilityLabel = "收藏，\(count) 个收藏夹"
+                            }
+                            self.showActionResult(result, success: option.isSelected ? "已从收藏夹移除" : "已加入收藏夹")
                         }
                     })
                 }

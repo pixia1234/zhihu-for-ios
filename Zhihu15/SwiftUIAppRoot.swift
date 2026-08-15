@@ -318,7 +318,6 @@ struct SwiftUIFeedCard: View {
 struct SwiftUIDetailRoute: Identifiable { let id = UUID(); let item: FeedItem }
 
 final class SwiftUIDetailActionBridge: ObservableObject {
-    var openComments: (() -> Void)?
     var openCanonicalURL: (() -> Void)?
     var openVideo: (() -> Void)?
 }
@@ -332,7 +331,10 @@ struct SwiftUIPushDetailLink: View {
             isActive: Binding(
                 get: { route != nil },
                 set: { isActive in
-                    if !isActive { route = nil }
+                    if !isActive {
+                        route = nil
+                        AppTheme.setTabBarHidden(false)
+                    }
                 }
             )
         ) {
@@ -366,10 +368,6 @@ private struct SwiftUIDetailContainer: View {
                         }
                         .accessibilityLabel("播放")
                     }
-                    Button { actionBridge.openComments?() } label: {
-                        Image(systemName: "bubble.left")
-                    }
-                    .accessibilityLabel("评论")
                     Button { actionBridge.openCanonicalURL?() } label: {
                         Image(systemName: "safari")
                     }
@@ -390,7 +388,6 @@ struct UIKitDetailScreen: UIViewControllerRepresentable {
 
     func makeUIViewController(context: Context) -> DetailViewController {
         let viewController = DetailViewController(item: item, managesNavigationBar: actionBridge != nil)
-        actionBridge?.openComments = { [weak viewController] in viewController?.openCommentsFromNavigationHost() }
         actionBridge?.openCanonicalURL = { [weak viewController] in viewController?.openCanonicalURLFromNavigationHost() }
         actionBridge?.openVideo = { [weak viewController] in viewController?.openVideoFromNavigationHost() }
         return viewController
@@ -507,12 +504,12 @@ struct SwiftUIProfileView: View {
     private var profileHeader: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack(alignment: .top, spacing: 14) {
-                CachedAvatar(url: store.profile?.avatarURL, name: store.profile?.name ?? "知", color: AppTheme.zhihuBlue, size: 76)
+                CachedAvatar(url: store.profile?.avatarURL ?? store.remoteProfile?.avatarURL, name: store.profile?.name ?? store.remoteProfile?.name ?? "知", color: AppTheme.zhihuBlue, size: 76)
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(store.profile?.name ?? "知乎用户")
+                    Text(store.profile?.name ?? store.remoteProfile?.name ?? "知乎用户")
                         .font(.title2.weight(.bold))
                         .lineLimit(1)
-                    Text(store.profile?.headline ?? (store.isLoggedIn ? "记录思考，分享发现" : "登录后同步你的收藏、历史与账号信息"))
+                    Text(store.profile?.headline ?? store.remoteProfile?.headline ?? (store.isLoggedIn ? "记录思考，分享发现" : "登录后同步你的收藏、历史与账号信息"))
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                         .lineLimit(3)
@@ -587,8 +584,15 @@ final class SwiftUIProfileStore: ObservableObject {
         errorMessage = nil
         guard isLoggedIn else { items = []; return }
         ZhihuAPIClient.shared.fetchProfile { [weak self] result in
-            if case let .failure(error) = result { self?.errorMessage = error.localizedDescription }
-            self?.load(tab: self?.tab ?? .answers)
+            guard let self = self else { return }
+            switch result {
+            case let .success(profile):
+                self.profile = profile
+                self.errorMessage = nil
+            case let .failure(error):
+                self.errorMessage = error.localizedDescription
+            }
+            self.load(tab: self.tab)
         }
         RemoteProfileRepository.shared.fetchProfile { [weak self] result in
             if case let .success(profile) = result { self?.remoteProfile = profile }

@@ -35,6 +35,28 @@ enum AppTheme {
         tabBar.tintColor = zhihuBlue
         tabBar.unselectedItemTintColor = secondaryText
     }
+
+    static func setTabBarHidden(_ hidden: Bool) {
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        for scene in scenes {
+            for window in scene.windows {
+                if let tabBarController = findTabBarController(in: window.rootViewController) {
+                    tabBarController.tabBar.isHidden = hidden
+                }
+            }
+        }
+    }
+
+    private static func findTabBarController(in controller: UIViewController?) -> UITabBarController? {
+        guard let controller else { return nil }
+        if let tabBarController = controller as? UITabBarController { return tabBarController }
+        if let presented = controller.presentedViewController,
+           let result = findTabBarController(in: presented) { return result }
+        for child in controller.children.reversed() {
+            if let result = findTabBarController(in: child) { return result }
+        }
+        return nil
+    }
 }
 
 final class AvatarView: UIView {
