@@ -22,7 +22,7 @@ struct SwiftUIAppRootView: View {
 
 final class SwiftUIFeedStore: ObservableObject {
     @Published var channel: HomeChannel = .recommendation
-    @Published private(set) var items: [FeedItem] = SampleData.recommendations
+    @Published private(set) var items: [FeedItem] = []
     @Published private(set) var isLoading = false
     @Published private(set) var isLoadingMore = false
     @Published private(set) var hasLoaded = false
@@ -311,6 +311,7 @@ struct CachedRemoteImage: View {
     let url: URL?
     @State private var image: UIImage?
     @State private var didFail = false
+    @State private var loadedURLString: String?
 
     var body: some View {
         ZStack {
@@ -323,12 +324,19 @@ struct CachedRemoteImage: View {
         }
         .clipped()
         .onAppear(perform: load)
-        .onChange(of: url?.absoluteString) { _ in load() }
+        .onChange(of: url?.absoluteString) { _ in
+            image = nil
+            didFail = false
+            load()
+        }
     }
 
     private func load() {
         guard let url else { didFail = true; return }
+        let requestedURL = url.absoluteString
+        loadedURLString = requestedURL
         ImagePipeline.shared.image(for: url) { image in
+            guard loadedURLString == requestedURL else { return }
             self.image = image
             self.didFail = image == nil
         }
