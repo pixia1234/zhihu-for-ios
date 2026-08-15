@@ -26,6 +26,7 @@ final class DetailViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         title = item.kind.rawValue
+        navigationItem.largeTitleDisplayMode = .never
         view.backgroundColor = .systemBackground
         var actions = [UIBarButtonItem(title: "评论", style: .plain, target: self, action: #selector(openComments))]
         if item.kind == .video { actions.insert(UIBarButtonItem(title: "播放", style: .plain, target: self, action: #selector(openVideo)), at: 0) }
@@ -257,9 +258,7 @@ final class DetailViewController: UIViewController {
                 if let upvoteCount = content.upvoteCount { self.displayedUpvotes = upvoteCount }
                 if let isVoted = content.isVoted { self.hasVoted = isVoted }
                 self.updatePrimaryActionTitle()
-                let authorText = [content.author, content.authorHeadline].compactMap { $0 }.joined(separator: " · ")
                 self.richContentView.load(markup: content.bodyHTML.isEmpty ? content.body : content.bodyHTML)
-                self.navigationItem.prompt = authorText.isEmpty ? nil : authorText
                 if let url = content.canonicalURL {
                     self.navigationItem.rightBarButtonItems?.last?.accessibilityLabel = "在知乎打开"
                     self.canonicalURL = url
