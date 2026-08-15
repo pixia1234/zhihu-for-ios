@@ -41,6 +41,9 @@
 		A10000010000000000000021 /* AppLock.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000022 /* AppLock.swift */; };
 		A10000010000000000000022 /* AccountListViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000023 /* AccountListViewController.swift */; };
 		A10000010000000000000023 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000024 /* Assets.xcassets */; };
+		A10000010000000000000024 /* RichContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000025 /* RichContentView.swift */; };
+		A10000010000000000000025 /* SwiftUIAppRoot.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000026 /* SwiftUIAppRoot.swift */; };
+		A10000010000000000000026 /* RemoteProfileRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000027 /* RemoteProfileRepository.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -80,6 +83,9 @@
 		B10000010000000000000022 /* AppLock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLock.swift; sourceTree = "<group>"; };
 		B10000010000000000000023 /* AccountListViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountListViewController.swift; sourceTree = "<group>"; };
 		B10000010000000000000024 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		B10000010000000000000025 /* RichContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichContentView.swift; sourceTree = "<group>"; };
+		B10000010000000000000026 /* SwiftUIAppRoot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftUIAppRoot.swift; sourceTree = "<group>"; };
+		B10000010000000000000027 /* RemoteProfileRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteProfileRepository.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -139,6 +145,9 @@
 				B10000010000000000000022 /* AppLock.swift */,
 				B10000010000000000000023 /* AccountListViewController.swift */,
 				B10000010000000000000024 /* Assets.xcassets */,
+				B10000010000000000000025 /* RichContentView.swift */,
+				B10000010000000000000026 /* SwiftUIAppRoot.swift */,
+				B10000010000000000000027 /* RemoteProfileRepository.swift */,
 			);
 			path = Zhihu15;
 			sourceTree = "<group>";
@@ -253,6 +262,9 @@
 				A10000010000000000000020 /* RichTextEditorViewController.swift in Sources */,
 				A10000010000000000000021 /* AppLock.swift in Sources */,
 				A10000010000000000000022 /* AccountListViewController.swift in Sources */,
+				A10000010000000000000024 /* RichContentView.swift in Sources */,
+				A10000010000000000000025 /* SwiftUIAppRoot.swift in Sources */,
+				A10000010000000000000026 /* RemoteProfileRepository.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

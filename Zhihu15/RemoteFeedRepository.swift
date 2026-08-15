@@ -72,7 +72,7 @@ final class RemoteFeedRepository {
         }
     }
 
-    static func decodeFeed(_ data: Data) throws -> [FeedItem] {
+    static func decodeFeed(_ data: Data, defaultKind: FeedItem.Kind? = nil) throws -> [FeedItem] {
         guard let root = try JSONSerialization.jsonObject(with: data) as? [String: Any],
               let values = root["data"] as? [[String: Any]] else { throw ZhihuSessionError.malformedPayload }
 
@@ -80,14 +80,14 @@ final class RemoteFeedRepository {
         return values.compactMap { entry -> FeedItem? in
             let target = (entry["target"] as? [String: Any]) ?? (entry["object"] as? [String: Any]) ?? (entry["content"] as? [String: Any]) ?? entry
             guard let rawID = string(target["id"]), !rawID.isEmpty, seen.insert(rawID).inserted else { return nil }
-            let type = string(target["type"]) ?? "question"
+            let type = string(target["type"]) ?? string(entry["type"]) ?? defaultKind?.apiName ?? "question"
             let kind: FeedItem.Kind = type == "article" ? .article : type == "answer" ? .answer : type == "video" || type == "zvideo" ? .video : .question
             let question = target["question"] as? [String: Any]
             let title = string(target["title"]) ?? string(target["name"]) ?? string(question?["title"]) ?? "知乎内容"
             let excerpt = plainText(string(target["excerpt"]) ?? string(target["detail"]) ?? string(target["description"]) ?? "")
             let author = (target["author"] as? [String: Any]) ?? (question?["author"] as? [String: Any])
             let authorName = string(author?["name"]) ?? "知乎用户"
-            let avatarURL = (string(author?["avatar_url"]) ?? string(author?["avatarUrl"])).flatMap(URL.init(string:))
+            let avatarURL = ZhihuMediaURL.from(author?["avatar_url"] ?? author?["avatarUrl"] ?? author?["avatar_url_template"])
             let thumbnailURL = Self.mediaURL(from: target)
             let topic = string((target["topic"] as? [String: Any])?["name"]) ?? (kind == .article ? "文章" : kind == .video ? "视频" : "问题")
             let upvotes = int(target["voteup_count"]) ?? int(target["vote_count"]) ?? int(target["like_count"]) ?? 0
@@ -99,11 +99,36 @@ final class RemoteFeedRepository {
     }
 
     private static func mediaURL(from target: [String: Any]) -> URL? {
-        let candidates: [String?] = [
-            string(target["thumbnail_url"]), string(target["thumbnailUrl"]), string(target["image_url"]), string(target["imageUrl"]),
-            string((target["thumbnail_info"] as? [String: Any])?["url"]), string((target["thumbnail_info"] as? [String: Any])?["thumbnail"])
+        var candidates: [Any?] = [
+            target["thumbnail_url"], target["thumbnailUrl"], target["thumbnail"],
+            target["image_url"], target["imageUrl"], target["cover_url"], target["coverUrl"]
         ]
-        return candidates.compactMap { $0 }.compactMap(URL.init(string:)).first { $0.scheme?.lowercased() == "https" }
+        if let info = target["thumbnail_info"] as? [String: Any] {
+            candidates.append(contentsOf: [info["url"], info["thumbnail"], info["image_url"]])
+            if let thumbnails = info["thumbnails"] as? [[String: Any] ] {
+                candidates.append(contentsOf: thumbnails.flatMap { [$0["url"], $0["thumbnail"], $0["image_url"]] })
+            }
+        }
+        if let extra = target["thumbnail_extra_info"] as? [String: Any] {
+            candidates.append(contentsOf: [extra["url"], extra["thumbnail"]])
+        }
+        if let images = target["images"] as? [Any] {
+            candidates.append(contentsOf: images)
+        }
+        if let content = target["content"] as? [[String: Any]] {
+            for item in content where string(item["type"]) == "image" || item["url"] != nil || item["image_url"] != nil {
+                candidates.append(contentsOf: [item["url"], item["image_url"], item["original_url"], item["thumbnail"]])
+            }
+        }
+        for candidate in candidates {
+            if let url = ZhihuMediaURL.from(candidate) { return url }
+            if let dictionary = candidate as? [String: Any] {
+                for key in ["url", "image_url", "imageUrl", "original_url", "thumbnail"] {
+                    if let url = ZhihuMediaURL.from(dictionary[key]) { return url }
+                }
+            }
+        }
+        return nil
     }
 
     private static func string(_ value: Any?) -> String? {
@@ -127,5 +152,16 @@ final class RemoteFeedRepository {
     private static func color(for value: String) -> UIColor {
         let colors: [UIColor] = [.systemBlue, .systemOrange, .systemPurple, .systemGreen, .systemTeal]
         return colors[abs(value.hashValue) % colors.count]
+    }
+}
+
+private extension FeedItem.Kind {
+    var apiName: String {
+        switch self {
+        case .question: return "question"
+        case .answer: return "answer"
+        case .article: return "article"
+        case .video: return "video"
+        }
     }
 }

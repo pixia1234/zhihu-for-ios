@@ -1,6 +1,26 @@
 import ImageIO
 import UIKit
 
+enum ZhihuMediaURL {
+    static func normalize(_ url: URL?) -> URL? {
+        guard let url,
+              var components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+              let host = components.host?.lowercased(),
+              components.user == nil,
+              components.password == nil,
+              components.port == nil || components.port == 443 else { return nil }
+        if components.scheme?.lowercased() == "http" { components.scheme = "https" }
+        guard components.scheme?.lowercased() == "https",
+              host == "zhimg.com" || host.hasSuffix(".zhimg.com") || host == "zhihu.com" || host.hasSuffix(".zhihu.com") else { return nil }
+        return components.url
+    }
+
+    static func from(_ value: Any?) -> URL? {
+        guard let raw = value as? String else { return nil }
+        return normalize(URL(string: raw.trimmingCharacters(in: .whitespacesAndNewlines)))
+    }
+}
+
 final class ImagePipeline {
     static let shared = ImagePipeline()
 
@@ -22,27 +42,30 @@ final class ImagePipeline {
     }
 
     func image(for url: URL, completion: @escaping (UIImage?) -> Void) {
-        guard let host = url.host?.lowercased(),
-              url.scheme?.lowercased() == "https",
-              host.hasSuffix("zhimg.com") || host.hasSuffix("zhihu.com") else {
+        guard let normalizedURL = ZhihuMediaURL.normalize(url) else {
             DispatchQueue.main.async { completion(nil) }
             return
         }
-        let key = url as NSURL
+        let key = normalizedURL as NSURL
         if let image = memory.object(forKey: key) {
             DispatchQueue.main.async { completion(image) }
             return
         }
 
-        let fileURL = diskURL(for: url)
+        let fileURL = diskURL(for: normalizedURL)
         diskQueue.async { [weak self] in
-            if let data = try? Data(contentsOf: fileURL), let image = UIImage(data: data) {
+            if let data = try? Data(contentsOf: fileURL), let image = Self.decode(data) {
                 self?.memory.setObject(image, forKey: key, cost: data.count)
                 DispatchQueue.main.async { completion(image) }
                 return
             }
-            self?.session.dataTask(with: url) { [weak self] data, response, _ in
-                guard let data = data, let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode), let image = UIImage(data: data) else {
+            var request = URLRequest(url: normalizedURL)
+            request.cachePolicy = .returnCacheDataElseLoad
+            request.setValue("image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8", forHTTPHeaderField: "Accept")
+            request.setValue(ZhihuAccountStore.shared.load()?.userAgent ?? "Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148", forHTTPHeaderField: "User-Agent")
+            request.setValue("https://www.zhihu.com/", forHTTPHeaderField: "Referer")
+            self?.session.dataTask(with: request) { [weak self] data, response, _ in
+                guard let data = data, let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode), let image = Self.decode(data) else {
                     DispatchQueue.main.async { completion(nil) }
                     return
                 }
@@ -68,5 +91,18 @@ final class ImagePipeline {
             .replacingOccurrences(of: "/", with: "_")
             .replacingOccurrences(of: "+", with: "-")
         return directory.appendingPathComponent(name).appendingPathExtension("img")
+    }
+
+    private static func decode(_ data: Data) -> UIImage? {
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil) else { return UIImage(data: data) }
+        let options: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceThumbnailMaxPixelSize: 2048
+        ]
+        guard let cgImage = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else {
+            return UIImage(data: data)
+        }
+        return UIImage(cgImage: cgImage)
     }
 }

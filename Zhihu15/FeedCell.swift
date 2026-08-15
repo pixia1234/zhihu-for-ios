@@ -40,6 +40,7 @@ final class FeedCell: UITableViewCell {
         imageURL = nil
         avatarURL = nil
         previewImageView.image = nil
+        previewIcon.isHidden = false
         previewView.isHidden = true
         topicLabel.text = nil
         upvoteButton.setTitle("赞同", for: .normal)

@@ -76,4 +76,20 @@ struct MessageItem {
     let date: String
     let symbol: String
     let color: UIColor
+    let id: String
+    let avatarURL: URL?
+    let isRead: Bool
+    let destinationURL: URL?
+
+    init(title: String, detail: String, date: String, symbol: String, color: UIColor, id: String = UUID().uuidString, avatarURL: URL? = nil, isRead: Bool = true, destinationURL: URL? = nil) {
+        self.title = title
+        self.detail = detail
+        self.date = date
+        self.symbol = symbol
+        self.color = color
+        self.id = id
+        self.avatarURL = avatarURL
+        self.isRead = isRead
+        self.destinationURL = destinationURL
+    }
 }

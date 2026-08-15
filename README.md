@@ -21,7 +21,8 @@
 - 视频能力：获取知乎视频播放地址并使用 AVKit 播放
 - 隐私保护：Face ID、Touch ID 或设备密码 App 锁
 - iPad 适配：支持 iPad 横竖屏、系统 Split View/Slide Over 窗口缩放，窄分屏自动关闭大标题，列表和编辑页面使用自适应约束
-- 兼容性：UIKit、Swift 5、iOS 15 部署目标，不使用 SwiftUI 或 iOS 26 专属 API
+- UI 架构：SwiftUI 主导航与信息流，UIKit 承载登录二维码、风控验证、正文 Web/Markdown、视频、富文本编辑器和 App 锁等复杂场景
+- 兼容性：SwiftUI/UIKit 混合、Swift 5、iOS 15 部署目标，兼容 iPhone/iPad 全尺寸、横竖屏和 Split View，不使用 iOS 26 专属 API
 
 ## 运行
 

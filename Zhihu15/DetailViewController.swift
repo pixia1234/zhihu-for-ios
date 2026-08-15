@@ -5,8 +5,9 @@ final class DetailViewController: UIViewController {
     private let scrollView = UIScrollView()
     private let contentStack = UIStackView()
     private let titleLabel = UILabel()
-    private let bodyLabel = UILabel()
+    private let richContentView = RichContentView()
     private let primaryActionButton = UIButton(type: .system)
+    private var canonicalURL: URL?
 
     init(item: FeedItem) {
         self.item = item
@@ -19,13 +20,10 @@ final class DetailViewController: UIViewController {
         super.viewDidLoad()
         title = item.kind.rawValue
         view.backgroundColor = .systemBackground
-        navigationItem.rightBarButtonItem = UIBarButtonItem(title: "评论", style: .plain, target: self, action: #selector(openComments))
-        if item.kind == .video {
-            navigationItem.rightBarButtonItems = [
-                UIBarButtonItem(title: "播放", style: .plain, target: self, action: #selector(openVideo)),
-                UIBarButtonItem(title: "评论", style: .plain, target: self, action: #selector(openComments))
-            ]
-        }
+        var actions = [UIBarButtonItem(title: "评论", style: .plain, target: self, action: #selector(openComments))]
+        if item.kind == .video { actions.insert(UIBarButtonItem(title: "播放", style: .plain, target: self, action: #selector(openVideo)), at: 0) }
+        actions.append(UIBarButtonItem(image: UIImage(systemName: "safari"), style: .plain, target: self, action: #selector(openCanonicalURL)))
+        navigationItem.rightBarButtonItems = actions
         setupScrollView()
         buildContent()
         loadRemoteContent()
@@ -113,15 +111,30 @@ final class DetailViewController: UIViewController {
                 imageIcon.widthAnchor.constraint(equalToConstant: 44),
                 imageIcon.heightAnchor.constraint(equalToConstant: 44)
             ])
+            let preview = UIImageView()
+            preview.contentMode = .scaleAspectFill
+            preview.clipsToBounds = true
+            preview.layer.cornerRadius = 12
+            preview.translatesAutoresizingMaskIntoConstraints = false
+            imagePlaceholder.insertSubview(preview, at: 0)
+            NSLayoutConstraint.activate([
+                preview.leadingAnchor.constraint(equalTo: imagePlaceholder.leadingAnchor),
+                preview.trailingAnchor.constraint(equalTo: imagePlaceholder.trailingAnchor),
+                preview.topAnchor.constraint(equalTo: imagePlaceholder.topAnchor),
+                preview.bottomAnchor.constraint(equalTo: imagePlaceholder.bottomAnchor)
+            ])
+            if let url = item.thumbnailURL {
+                ImagePipeline.shared.image(for: url) { image in
+                    preview.image = image
+                    imageIcon.isHidden = image != nil
+                }
+            }
             contentStack.addArrangedSubview(imagePlaceholder)
         }
 
-        bodyLabel.text = item.excerpt + "\n\n正在读取完整内容…"
-        bodyLabel.font = .systemFont(ofSize: 18)
-        bodyLabel.textColor = AppTheme.text
-        bodyLabel.numberOfLines = 0
-        bodyLabel.setContentHuggingPriority(.required, for: .vertical)
-        contentStack.addArrangedSubview(bodyLabel)
+        richContentView.onOpenURL = { [weak self] url in self?.openContentURL(url) }
+        richContentView.load(markup: item.excerpt)
+        contentStack.addArrangedSubview(richContentView)
 
         let divider = UIView()
         divider.backgroundColor = AppTheme.border
@@ -168,10 +181,14 @@ final class DetailViewController: UIViewController {
             if case let .success(content) = result {
                 self.titleLabel.text = content.title
                 let authorText = [content.author, content.authorHeadline].compactMap { $0 }.joined(separator: " · ")
-                self.bodyLabel.text = content.body.isEmpty ? self.item.excerpt : content.body
+                self.richContentView.load(markup: content.bodyHTML.isEmpty ? content.body : content.bodyHTML)
                 self.navigationItem.prompt = authorText.isEmpty ? nil : authorText
+                if let url = content.canonicalURL {
+                    self.navigationItem.rightBarButtonItems?.last?.accessibilityLabel = "在知乎打开"
+                    self.canonicalURL = url
+                }
             } else {
-                self.bodyLabel.text = self.item.excerpt + "\n\n暂时无法读取网络正文，请稍后重试。"
+                self.richContentView.load(markup: self.item.excerpt + "\n\n暂时无法读取网络正文，请稍后重试。")
             }
         }
     }
@@ -182,6 +199,20 @@ final class DetailViewController: UIViewController {
 
     @objc private func openVideo() {
         navigationController?.pushViewController(VideoPlaybackViewController(item: item), animated: true)
+    }
+
+    @objc private func openCanonicalURL() {
+        guard let url = canonicalURL ?? RemoteContentRepository.canonicalURLForDisplay(item) else { return }
+        openContentURL(url)
+    }
+
+    private func openContentURL(_ url: URL) {
+        guard url.scheme?.lowercased() == "https" || url.scheme?.lowercased() == "http" else { return }
+        if url.host?.lowercased().hasSuffix("zhihu.com") == true {
+            navigationController?.pushViewController(WebContentViewController(url: url, title: "知乎内容"), animated: true)
+        } else {
+            UIApplication.shared.open(url)
+        }
     }
 
     @objc private func primaryAction() {
