@@ -173,9 +173,21 @@ final class HomeViewController: UIViewController {
     private func handle(_ action: FeedCell.Action, item: FeedItem) {
         switch action {
         case .upvote:
-            let alert = UIAlertController(title: "已记录", message: "感谢你的赞同", preferredStyle: .alert)
-            alert.addAction(UIAlertAction(title: "好的", style: .default))
-            present(alert, animated: true)
+            guard ZhihuAccountStore.shared.load()?.isLoggedIn == true else {
+                present(UINavigationController(rootViewController: LoginViewController()), animated: true)
+                return
+            }
+            if item.kind == .question, let questionID = item.contentID ?? item.questionID, questionID > 0 {
+                ZhihuActionRepository.shared.follow(questionID: questionID, following: true) { [weak self] result in
+                    self?.showActionResult(result, success: "已关注这个问题")
+                }
+            } else if item.kind == .answer, let answerID = item.contentID, answerID > 0 {
+                ZhihuActionRepository.shared.vote(answerID: answerID, up: true) { [weak self] result in
+                    self?.showActionResult(result, success: "已赞同")
+                }
+            } else {
+                showActionResult(.failure(ZhihuSessionError.malformedPayload), success: "")
+            }
         case .comment:
             showDetail(for: item)
         case .share:
@@ -186,6 +198,17 @@ final class HomeViewController: UIViewController {
             }
             present(share, animated: true)
         }
+    }
+
+    private func showActionResult(_ result: Result<Void, Error>, success: String) {
+        let message: String
+        switch result {
+        case .success: message = success
+        case let .failure(error): message = error.localizedDescription
+        }
+        let alert = UIAlertController(title: "知乎", message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "好的", style: .default))
+        present(alert, animated: true)
     }
 }
 

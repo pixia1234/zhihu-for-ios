@@ -68,6 +68,11 @@ final class DetailViewController: UIViewController {
             avatar.widthAnchor.constraint(equalToConstant: 42),
             avatar.heightAnchor.constraint(equalToConstant: 42)
         ])
+        if let url = item.avatarURL {
+            ImagePipeline.shared.image(for: url) { [weak avatar] image in
+                avatar?.setImage(image)
+            }
+        }
         authorRow.addArrangedSubview(avatar)
         let authorInfo = UIStackView()
         authorInfo.axis = .vertical
@@ -138,7 +143,9 @@ final class DetailViewController: UIViewController {
         primaryActionButton.addTarget(self, action: #selector(primaryAction), for: .touchUpInside)
         actions.addArrangedSubview(primaryActionButton)
         actions.addArrangedSubview(actionButton(title: "\(item.comments > 0 ? item.comments : 0) 评论", image: "bubble.left"))
-        actions.addArrangedSubview(actionButton(title: "收藏", image: "bookmark"))
+        let collectionButton = actionButton(title: "收藏", image: "bookmark")
+        collectionButton.addTarget(self, action: #selector(openCollectionPicker), for: .touchUpInside)
+        actions.addArrangedSubview(collectionButton)
         contentStack.addArrangedSubview(actions)
 
         let relatedTitle = UILabel()
@@ -185,12 +192,50 @@ final class DetailViewController: UIViewController {
         }
         if item.kind == .question {
             let questionID = item.contentID ?? item.questionID ?? 0
+            guard questionID > 0 else {
+                showActionResult(.failure(ZhihuSessionError.malformedPayload), success: "")
+                return
+            }
             ZhihuActionRepository.shared.follow(questionID: questionID, following: true) { [weak self] result in
                 self?.showActionResult(result, success: "已关注这个问题")
             }
         } else if let contentID = item.contentID {
             ZhihuActionRepository.shared.vote(answerID: contentID, up: true) { [weak self] result in
                 self?.showActionResult(result, success: "已赞同")
+            }
+        }
+    }
+
+    @objc private func openCollectionPicker() {
+        guard ZhihuAccountStore.shared.load()?.isLoggedIn == true else {
+            present(UINavigationController(rootViewController: LoginViewController()), animated: true)
+            return
+        }
+        ZhihuActionRepository.shared.fetchCollections(for: item) { [weak self] result in
+            guard let self = self else { return }
+            switch result {
+            case let .failure(error): self.showActionResult(.failure(error), success: "")
+            case let .success(options):
+                guard !options.isEmpty else {
+                    self.showActionResult(.failure(ZhihuSessionError.malformedPayload), success: "")
+                    return
+                }
+                let alert = UIAlertController(title: "收藏到", message: nil, preferredStyle: .actionSheet)
+                for option in options {
+                    let title = option.isSelected ? "✓ \(option.title)（移除）" : option.title
+                    alert.addAction(UIAlertAction(title: title, style: .default) { [weak self] _ in
+                        guard let self = self else { return }
+                        ZhihuActionRepository.shared.setCollection(!option.isSelected, collectionID: option.id, for: self.item) { [weak self] result in
+                            self?.showActionResult(result, success: option.isSelected ? "已从收藏夹移除" : "已加入收藏夹")
+                        }
+                    })
+                }
+                alert.addAction(UIAlertAction(title: "取消", style: .cancel))
+                if let popover = alert.popoverPresentationController {
+                    popover.sourceView = self.view
+                    popover.sourceRect = CGRect(x: self.view.bounds.midX, y: self.view.bounds.midY, width: 0, height: 0)
+                }
+                self.present(alert, animated: true)
             }
         }
     }

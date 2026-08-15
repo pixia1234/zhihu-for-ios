@@ -13,6 +13,14 @@ final class MainTabBarController: UITabBarController {
         selectedIndex = 0
     }
 
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        let usesCompactNavigation = view.bounds.width < 600
+        for controller in viewControllers ?? [] {
+            (controller as? UINavigationController)?.navigationBar.prefersLargeTitles = !usesCompactNavigation
+        }
+    }
+
     private func navigationController(root: UIViewController, title: String, image: String, selectedImage: String) -> UINavigationController {
         root.title = title
         let navigationController = UINavigationController(rootViewController: root)

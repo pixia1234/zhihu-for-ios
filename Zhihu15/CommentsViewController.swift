@@ -11,6 +11,7 @@ final class CommentsViewController: UIViewController {
     private let item: FeedItem
     private let tableView = UITableView(frame: .zero, style: .insetGrouped)
     private var comments: [RemoteComment] = []
+    private var likedCommentIDs = Set<String>()
 
     init(item: FeedItem) {
         self.item = item
@@ -73,6 +74,26 @@ final class CommentsViewController: UIViewController {
         present(alert, animated: true)
     }
 
+    private func toggleLike(_ comment: RemoteComment) {
+        guard ZhihuAccountStore.shared.load()?.isLoggedIn == true else {
+            present(UINavigationController(rootViewController: LoginViewController()), animated: true)
+            return
+        }
+        let liked = !likedCommentIDs.contains(comment.id)
+        ZhihuActionRepository.shared.likeComment(commentID: comment.id, liked: liked) { [weak self] result in
+            guard let self = self else { return }
+            switch result {
+            case .success:
+                if liked { self.likedCommentIDs.insert(comment.id) } else { self.likedCommentIDs.remove(comment.id) }
+                self.tableView.reloadData()
+            case let .failure(error):
+                let alert = UIAlertController(title: "评论操作失败", message: error.localizedDescription, preferredStyle: .alert)
+                alert.addAction(UIAlertAction(title: "好的", style: .default))
+                self.present(alert, animated: true)
+            }
+        }
+    }
+
     private static func string(_ value: Any?) -> String? { value as? String }
     private static func int(_ value: Any?) -> Int? { (value as? NSNumber)?.intValue }
     private static func plainText(_ html: String) -> String {
@@ -86,10 +107,15 @@ final class CommentCell: UITableViewCell {
     private let authorLabel = UILabel()
     private let contentLabel = UILabel()
     private let likeLabel = UILabel()
+    private let likeButton = UIButton(type: .system)
+    var onLike: (() -> Void)?
 
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
-        let stack = UIStackView(arrangedSubviews: [authorLabel, contentLabel, likeLabel])
+        let likeRow = UIStackView(arrangedSubviews: [likeLabel, UIView(), likeButton])
+        likeRow.axis = .horizontal
+        likeRow.alignment = .center
+        let stack = UIStackView(arrangedSubviews: [authorLabel, contentLabel, likeRow])
         stack.axis = .vertical
         stack.spacing = 8
         stack.isLayoutMarginsRelativeArrangement = true
@@ -107,22 +133,37 @@ final class CommentCell: UITableViewCell {
         contentLabel.numberOfLines = 0
         likeLabel.font = .systemFont(ofSize: 12)
         likeLabel.textColor = AppTheme.secondaryText
+        likeButton.titleLabel?.font = .systemFont(ofSize: 12, weight: .medium)
+        likeButton.addTarget(self, action: #selector(likeTapped), for: .touchUpInside)
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
-    func configure(_ comment: RemoteComment) {
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        onLike = nil
+    }
+
+    func configure(_ comment: RemoteComment, liked: Bool) {
         authorLabel.text = comment.author
         contentLabel.text = comment.content
         likeLabel.text = comment.likeCount > 0 ? "\(comment.likeCount) 赞同" : "暂无赞同"
+        likeButton.setTitle(liked ? "已赞同" : "赞同", for: .normal)
+        likeButton.setImage(UIImage(systemName: liked ? "hand.thumbsup.fill" : "hand.thumbsup"), for: .normal)
+        likeButton.tintColor = liked ? AppTheme.zhihuBlue : AppTheme.secondaryText
+        likeButton.setTitleColor(liked ? AppTheme.zhihuBlue : AppTheme.secondaryText, for: .normal)
     }
+
+    @objc private func likeTapped() { onLike?() }
 }
 
 extension CommentsViewController: UITableViewDataSource {
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { comments.count }
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: CommentCell.reuseIdentifier, for: indexPath) as! CommentCell
-        cell.configure(comments[indexPath.row])
+        let comment = comments[indexPath.row]
+        cell.configure(comment, liked: likedCommentIDs.contains(comment.id))
+        cell.onLike = { [weak self] in self?.toggleLike(comment) }
         return cell
     }
 }

@@ -40,6 +40,7 @@
 		A10000010000000000000020 /* RichTextEditorViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000021 /* RichTextEditorViewController.swift */; };
 		A10000010000000000000021 /* AppLock.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000022 /* AppLock.swift */; };
 		A10000010000000000000022 /* AccountListViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000023 /* AccountListViewController.swift */; };
+		A10000010000000000000023 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000024 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -78,6 +79,7 @@
 		B10000010000000000000021 /* RichTextEditorViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichTextEditorViewController.swift; sourceTree = "<group>"; };
 		B10000010000000000000022 /* AppLock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLock.swift; sourceTree = "<group>"; };
 		B10000010000000000000023 /* AccountListViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountListViewController.swift; sourceTree = "<group>"; };
+		B10000010000000000000024 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -136,6 +138,7 @@
 				B10000010000000000000021 /* RichTextEditorViewController.swift */,
 				B10000010000000000000022 /* AppLock.swift */,
 				B10000010000000000000023 /* AccountListViewController.swift */,
+				B10000010000000000000024 /* Assets.xcassets */,
 			);
 			path = Zhihu15;
 			sourceTree = "<group>";
@@ -206,6 +209,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A10000010000000000000023 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -270,6 +274,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = com.example.zhihu15;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				SDKROOT = iphoneos;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
@@ -292,6 +297,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = com.example.zhihu15;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				SDKROOT = iphoneos;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
