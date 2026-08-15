@@ -12,15 +12,9 @@
 		A10000010000000000000003 /* AppTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000003 /* AppTheme.swift */; };
 		A10000010000000000000004 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000004 /* Models.swift */; };
 		A10000010000000000000005 /* SampleData.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000005 /* SampleData.swift */; };
-		A10000010000000000000006 /* MainTabBarController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000006 /* MainTabBarController.swift */; };
-		A10000010000000000000007 /* HomeViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000007 /* HomeViewController.swift */; };
 		A10000010000000000000008 /* FeedCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000008 /* FeedCell.swift */; };
-		A10000010000000000000009 /* DetailViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000009 /* DetailViewController.swift */; };
-		A1000001000000000000000A /* HotListViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000001000000000000000A /* HotListViewController.swift */; };
 		A1000001000000000000000B /* SearchViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000001000000000000000B /* SearchViewController.swift */; };
-		A1000001000000000000000C /* CollectionsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000001000000000000000C /* CollectionsViewController.swift */; };
 		A1000001000000000000000D /* MessagesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000001000000000000000D /* MessagesViewController.swift */; };
-		A1000001000000000000000E /* ProfileViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000001000000000000000E /* ProfileViewController.swift */; };
 		A10000010000000000000010 /* ZhihuSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000011 /* ZhihuSession.swift */; };
 		A10000010000000000000011 /* ImagePipeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000012 /* ImagePipeline.swift */; };
 		A10000010000000000000012 /* RemoteFeedRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000013 /* RemoteFeedRepository.swift */; };
@@ -46,7 +40,6 @@
 		A10000010000000000000026 /* RemoteProfileRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000027 /* RemoteProfileRepository.swift */; };
 		A10000010000000000000027 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000028 /* LaunchScreen.storyboard */; };
 		A10000010000000000000028 /* QuestionAnswersRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000029 /* QuestionAnswersRepository.swift */; };
-		A10000010000000000000029 /* QuestionAnswersViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000001000000000000002A /* QuestionAnswersViewController.swift */; };
 		A1000001000000000000002A /* HandoffCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000001000000000000002B /* HandoffCoordinator.swift */; };
 /* End PBXBuildFile section */
 
@@ -56,15 +49,9 @@
 		B10000010000000000000003 /* AppTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTheme.swift; sourceTree = "<group>"; };
 		B10000010000000000000004 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
 		B10000010000000000000005 /* SampleData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleData.swift; sourceTree = "<group>"; };
-		B10000010000000000000006 /* MainTabBarController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabBarController.swift; sourceTree = "<group>"; };
-		B10000010000000000000007 /* HomeViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeViewController.swift; sourceTree = "<group>"; };
 		B10000010000000000000008 /* FeedCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedCell.swift; sourceTree = "<group>"; };
-		B10000010000000000000009 /* DetailViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailViewController.swift; sourceTree = "<group>"; };
-		B1000001000000000000000A /* HotListViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotListViewController.swift; sourceTree = "<group>"; };
 		B1000001000000000000000B /* SearchViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchViewController.swift; sourceTree = "<group>"; };
-		B1000001000000000000000C /* CollectionsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectionsViewController.swift; sourceTree = "<group>"; };
 		B1000001000000000000000D /* MessagesViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessagesViewController.swift; sourceTree = "<group>"; };
-		B1000001000000000000000E /* ProfileViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileViewController.swift; sourceTree = "<group>"; };
 		B1000001000000000000000F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		B10000010000000000000010 /* Zhihu15.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Zhihu15.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		B10000010000000000000011 /* ZhihuSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZhihuSession.swift; sourceTree = "<group>"; };
@@ -92,7 +79,6 @@
 		B10000010000000000000027 /* RemoteProfileRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteProfileRepository.swift; sourceTree = "<group>"; };
 		B10000010000000000000028 /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
 		B10000010000000000000029 /* QuestionAnswersRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuestionAnswersRepository.swift; sourceTree = "<group>"; };
-		B1000001000000000000002A /* QuestionAnswersViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuestionAnswersViewController.swift; sourceTree = "<group>"; };
 		B1000001000000000000002B /* HandoffCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HandoffCoordinator.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -123,15 +109,9 @@
 				B10000010000000000000003 /* AppTheme.swift */,
 				B10000010000000000000004 /* Models.swift */,
 				B10000010000000000000005 /* SampleData.swift */,
-				B10000010000000000000006 /* MainTabBarController.swift */,
-				B10000010000000000000007 /* HomeViewController.swift */,
 				B10000010000000000000008 /* FeedCell.swift */,
-				B10000010000000000000009 /* DetailViewController.swift */,
-				B1000001000000000000000A /* HotListViewController.swift */,
 				B1000001000000000000000B /* SearchViewController.swift */,
-				B1000001000000000000000C /* CollectionsViewController.swift */,
 				B1000001000000000000000D /* MessagesViewController.swift */,
-				B1000001000000000000000E /* ProfileViewController.swift */,
 				B1000001000000000000000F /* Info.plist */,
 				B10000010000000000000011 /* ZhihuSession.swift */,
 				B10000010000000000000012 /* ImagePipeline.swift */,
@@ -158,7 +138,6 @@
 				B10000010000000000000027 /* RemoteProfileRepository.swift */,
 				B10000010000000000000028 /* LaunchScreen.storyboard */,
 				B10000010000000000000029 /* QuestionAnswersRepository.swift */,
-				B1000001000000000000002A /* QuestionAnswersViewController.swift */,
 				B1000001000000000000002B /* HandoffCoordinator.swift */,
 			);
 			path = Zhihu15;
@@ -247,15 +226,9 @@
 				A10000010000000000000003 /* AppTheme.swift in Sources */,
 				A10000010000000000000004 /* Models.swift in Sources */,
 				A10000010000000000000005 /* SampleData.swift in Sources */,
-				A10000010000000000000006 /* MainTabBarController.swift in Sources */,
-				A10000010000000000000007 /* HomeViewController.swift in Sources */,
 				A10000010000000000000008 /* FeedCell.swift in Sources */,
-				A10000010000000000000009 /* DetailViewController.swift in Sources */,
-				A1000001000000000000000A /* HotListViewController.swift in Sources */,
 				A1000001000000000000000B /* SearchViewController.swift in Sources */,
-				A1000001000000000000000C /* CollectionsViewController.swift in Sources */,
 				A1000001000000000000000D /* MessagesViewController.swift in Sources */,
-				A1000001000000000000000E /* ProfileViewController.swift in Sources */,
 				A10000010000000000000010 /* ZhihuSession.swift in Sources */,
 				A10000010000000000000011 /* ImagePipeline.swift in Sources */,
 				A10000010000000000000012 /* RemoteFeedRepository.swift in Sources */,
@@ -279,7 +252,6 @@
 				A10000010000000000000025 /* SwiftUIAppRoot.swift in Sources */,
 				A10000010000000000000026 /* RemoteProfileRepository.swift in Sources */,
 				A10000010000000000000028 /* QuestionAnswersRepository.swift in Sources */,
-				A10000010000000000000029 /* QuestionAnswersViewController.swift in Sources */,
 				A1000001000000000000002A /* HandoffCoordinator.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

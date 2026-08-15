@@ -272,6 +272,8 @@ struct SwiftUIFeedCard: View {
     let item: FeedItem
     var onOpen: (() -> Void)? = nil
     var onVote: (() -> Void)? = nil
+    var onComment: (() -> Void)? = nil
+    var onShare: (() -> Void)? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -301,7 +303,21 @@ struct SwiftUIFeedCard: View {
                 } else {
                     Label(item.isVoted ? "已赞同" : (item.upvotes > 0 ? "\(item.upvotes)" : "赞同"), systemImage: item.isVoted ? "arrow.up.circle.fill" : "arrow.up")
                 }
-                Label(item.comments > 0 ? "\(item.comments)" : "评论", systemImage: "bubble.left")
+                if let onComment = onComment {
+                    Button(action: onComment) {
+                        Label(item.comments > 0 ? "\(item.comments)" : "评论", systemImage: "bubble.left")
+                    }
+                    .buttonStyle(.borderless)
+                } else {
+                    Label(item.comments > 0 ? "\(item.comments)" : "评论", systemImage: "bubble.left")
+                }
+                if let onShare = onShare {
+                    Button(action: onShare) {
+                        Image(systemName: "square.and.arrow.up")
+                    }
+                    .buttonStyle(.borderless)
+                    .accessibilityLabel("分享")
+                }
                 Spacer()
                 Text(item.topic).font(.caption).foregroundColor(Color(red: 0.08, green: 0.38, blue: 0.86))
             }
@@ -449,6 +465,12 @@ final class SwiftUIDetailStore: ObservableObject {
 
 struct SwiftUIPushDetailLink: View {
     @Binding var route: SwiftUIDetailRoute?
+    let restoresTabBarOnPop: Bool
+
+    init(route: Binding<SwiftUIDetailRoute?>, restoresTabBarOnPop: Bool = true) {
+        _route = route
+        self.restoresTabBarOnPop = restoresTabBarOnPop
+    }
 
     var body: some View {
         NavigationLink(
@@ -458,7 +480,9 @@ struct SwiftUIPushDetailLink: View {
                 set: { isActive in
                     if !isActive {
                         route = nil
-                        AppTheme.setTabBarHidden(false)
+                        if restoresTabBarOnPop {
+                            AppTheme.setTabBarHidden(false)
+                        }
                     }
                 }
             )
@@ -482,11 +506,10 @@ struct SwiftUIDetailView: View {
     let item: FeedItem
     let restoresTabBarOnDisappear: Bool
     @StateObject private var store: SwiftUIDetailStore
-    @StateObject private var navigationCoordinator: SwiftUIDetailNavigationCoordinator
     @State private var richContentHeight: CGFloat = 28
     @State private var showLogin = false
     @State private var showComments = false
-    @State private var showAnswersSheet = false
+    @State private var showAnswers = false
     @State private var showCollectionPicker = false
     @State private var showVideo = false
     @State private var showWebContent = false
@@ -496,16 +519,16 @@ struct SwiftUIDetailView: View {
         self.item = item
         self.restoresTabBarOnDisappear = restoresTabBarOnDisappear
         _store = StateObject(wrappedValue: SwiftUIDetailStore(item: item))
-        _navigationCoordinator = StateObject(wrappedValue: SwiftUIDetailNavigationCoordinator())
     }
 
     var body: some View {
         detailScrollView
         .background(Color(uiColor: .systemBackground).ignoresSafeArea())
         .background(
-            SwiftUINavigationControllerResolver { navigationController in
-                navigationCoordinator.navigationController = navigationController
+            NavigationLink(destination: answersDestination, isActive: $showAnswers) {
+                EmptyView()
             }
+            .hidden()
         )
         .navigationTitle(store.title)
         .navigationBarTitleDisplayMode(.inline)
@@ -543,13 +566,6 @@ struct SwiftUIDetailView: View {
         }
         .sheet(isPresented: $showLogin) { UIKitNavigationScreen { LoginViewController() } }
         .sheet(isPresented: $showComments) { UIKitNavigationScreen { CommentsViewController(item: item) } }
-        .sheet(isPresented: $showAnswersSheet) {
-            if let question = answersQuestion {
-                UIKitNavigationScreen { QuestionAnswersViewController(question: question, excludingAnswerID: item.kind == .answer ? item.contentID : nil) }
-            } else {
-                SwiftUIEmptyState(title: "缺少问题 ID", systemImage: "questionmark.circle")
-            }
-        }
         .sheet(isPresented: $showVideo) { UIKitNavigationScreen { VideoPlaybackViewController(item: item) } }
         .sheet(isPresented: $showWebContent) {
             if let webURL = webURL {
@@ -557,6 +573,18 @@ struct SwiftUIDetailView: View {
             }
         }
         .sheet(isPresented: $showCollectionPicker) { collectionPicker }
+    }
+
+    @ViewBuilder
+    private var answersDestination: some View {
+        if let question = answersQuestion {
+            SwiftUIAnswersView(
+                question: question,
+                excludingAnswerID: item.kind == .answer ? item.contentID : nil
+            )
+        } else {
+            SwiftUIEmptyState(title: "缺少问题 ID", systemImage: "questionmark.circle")
+        }
     }
 
     private var detailScrollView: some View {
@@ -608,20 +636,11 @@ struct SwiftUIDetailView: View {
     }
 
     private func openAnswers() {
-        guard let question = answersQuestion else {
+        guard answersQuestion != nil else {
             store.actionMessage = "缺少问题 ID，暂时无法加载全部回答"
             return
         }
-        let controller = QuestionAnswersViewController(
-            question: question,
-            excludingAnswerID: item.kind == .answer ? item.contentID : nil
-        )
-        controller.hidesBottomBarWhenPushed = true
-        if let navigationController = navigationCoordinator.navigationController {
-            navigationController.pushViewController(controller, animated: true)
-        } else {
-            showAnswersSheet = true
-        }
+        showAnswers = true
     }
 
     private var answersQuestion: FeedItem? {
@@ -763,41 +782,220 @@ struct SwiftUIDetailView: View {
     }
 }
 
-final class SwiftUIDetailNavigationCoordinator: ObservableObject {
-    weak var navigationController: UINavigationController?
+final class SwiftUIAnswersStore: ObservableObject {
+    let question: FeedItem
+    let excludingAnswerID: Int64?
+
+    @Published private(set) var items: [FeedItem] = []
+    @Published private(set) var isLoading = false
+    @Published private(set) var isLoadingMore = false
+    @Published private(set) var hasLoaded = false
+    @Published var errorMessage: String?
+
+    private var nextPageURL: URL?
+
+    init(question: FeedItem, excludingAnswerID: Int64?) {
+        self.question = question
+        self.excludingAnswerID = excludingAnswerID
+    }
+
+    func load() {
+        guard !isLoading, !isLoadingMore else { return }
+        isLoading = true
+        hasLoaded = false
+        nextPageURL = nil
+        errorMessage = nil
+        QuestionAnswersRepository.shared.fetch(question: question) { [weak self] result in
+            guard let self = self else { return }
+            self.isLoading = false
+            self.hasLoaded = true
+            switch result {
+            case let .success(page):
+                self.items = page.items.filter { $0.contentID != self.excludingAnswerID }
+                self.nextPageURL = page.nextURL
+                if self.items.isEmpty, page.nextURL != nil { self.loadMore() }
+            case let .failure(error):
+                self.errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    func refresh() async {
+        await withCheckedContinuation { continuation in
+            guard !isLoading, !isLoadingMore else {
+                continuation.resume()
+                return
+            }
+            isLoading = true
+            nextPageURL = nil
+            errorMessage = nil
+            QuestionAnswersRepository.shared.fetch(question: question) { [weak self] result in
+                guard let self = self else {
+                    continuation.resume()
+                    return
+                }
+                self.isLoading = false
+                self.hasLoaded = true
+                switch result {
+                case let .success(page):
+                    self.items = page.items.filter { $0.contentID != self.excludingAnswerID }
+                    self.nextPageURL = page.nextURL
+                case let .failure(error):
+                    self.errorMessage = error.localizedDescription
+                }
+                continuation.resume()
+            }
+        }
+    }
+
+    func loadMore() {
+        guard hasLoaded, !isLoading, !isLoadingMore, let nextPageURL else { return }
+        isLoadingMore = true
+        QuestionAnswersRepository.shared.fetch(question: question, nextURL: nextPageURL) { [weak self] result in
+            guard let self = self else { return }
+            self.isLoadingMore = false
+            switch result {
+            case let .success(page):
+                let existingIDs = Set(self.items.map(\.id))
+                self.items.append(contentsOf: page.items.filter {
+                    $0.contentID != self.excludingAnswerID && !existingIDs.contains($0.id)
+                })
+                self.nextPageURL = page.nextURL
+            case let .failure(error):
+                self.errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    func vote(item: FeedItem, completion: @escaping (Result<Void, Error>) -> Void) {
+        guard ZhihuAccountStore.shared.load()?.isLoggedIn == true else {
+            completion(.failure(ZhihuSessionError.authenticationRequired))
+            return
+        }
+        guard let contentID = item.contentID, contentID > 0 else {
+            completion(.failure(ZhihuSessionError.malformedPayload))
+            return
+        }
+        let requested = !item.isVoted
+        ZhihuActionRepository.shared.vote(contentID: contentID, kind: item.kind, up: requested) { [weak self] result in
+            guard let self = self else { return }
+            if case let .success(mutation) = result,
+               let index = self.items.firstIndex(where: { $0.id == item.id }) {
+                self.items[index].isVoted = mutation.isVoted
+                if let count = mutation.upvoteCount {
+                    self.items[index].upvotes = max(0, count)
+                } else {
+                    self.items[index].upvotes = max(0, self.items[index].upvotes + (mutation.isVoted ? 1 : -1))
+                }
+            }
+            completion(result.map { _ in () })
+        }
+    }
 }
 
-struct SwiftUINavigationControllerResolver: UIViewControllerRepresentable {
-    let onResolve: (UINavigationController) -> Void
+struct SwiftUIAnswersView: View {
+    let question: FeedItem
+    let excludingAnswerID: Int64?
+    @StateObject private var store: SwiftUIAnswersStore
+    @State private var detailRoute: SwiftUIDetailRoute?
+    @State private var commentsItem: FeedItem?
+    @State private var shareItem: FeedItem?
+    @State private var actionMessage: String?
 
-    func makeUIViewController(context: Context) -> ResolverViewController {
-        ResolverViewController(onResolve: onResolve)
+    init(question: FeedItem, excludingAnswerID: Int64? = nil) {
+        self.question = question
+        self.excludingAnswerID = excludingAnswerID
+        _store = StateObject(wrappedValue: SwiftUIAnswersStore(question: question, excludingAnswerID: excludingAnswerID))
     }
 
-    func updateUIViewController(_ uiViewController: ResolverViewController, context: Context) {
-        uiViewController.onResolve = onResolve
-        uiViewController.resolve()
-    }
+    var body: some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 14) {
+                Text(question.title)
+                    .font(.headline)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 14)
 
-    final class ResolverViewController: UIViewController {
-        var onResolve: (UINavigationController) -> Void
-
-        init(onResolve: @escaping (UINavigationController) -> Void) {
-            self.onResolve = onResolve
-            super.init(nibName: nil, bundle: nil)
-        }
-
-        required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-
-        override func didMove(toParent parent: UIViewController?) {
-            super.didMove(toParent: parent)
-            resolve()
-        }
-
-        func resolve() {
-            if let navigationController {
-                onResolve(navigationController)
+                if let errorMessage = store.errorMessage, store.items.isEmpty {
+                    SwiftUIErrorCard(message: errorMessage) { store.load() }
+                        .padding(.horizontal, 16)
+                }
+                if store.isLoading && store.items.isEmpty {
+                    ProgressView("正在加载回答")
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 40)
+                }
+                ForEach(store.items, id: \.id) { item in
+                    SwiftUIFeedCard(
+                        item: item,
+                        onOpen: { detailRoute = SwiftUIDetailRoute(item: item) },
+                        onVote: {
+                            store.vote(item: item) { result in
+                                if case let .failure(error) = result {
+                                    actionMessage = error.localizedDescription
+                                }
+                            }
+                        },
+                        onComment: { commentsItem = item },
+                        onShare: { shareItem = item }
+                    )
+                    .onAppear {
+                        if item.id == store.items.last?.id { store.loadMore() }
+                    }
+                }
+                if store.isLoadingMore {
+                    ProgressView("正在加载更多")
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                }
+                if store.hasLoaded && store.items.isEmpty && store.errorMessage == nil {
+                    SwiftUIEmptyState(title: "暂时没有回答", systemImage: "text.bubble")
+                }
             }
+            .frame(maxWidth: 860)
+            .frame(maxWidth: .infinity)
+            .padding(.bottom, 18)
+        }
+        .refreshable { await store.refresh() }
+        .background(Color(uiColor: .systemGroupedBackground).ignoresSafeArea())
+        .navigationTitle("全部回答")
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button { Task { await store.refresh() } } label: {
+                    Image(systemName: "arrow.clockwise")
+                }
+                .disabled(store.isLoading)
+            }
+        }
+        .onAppear {
+            AppTheme.setTabBarHidden(true)
+            if !store.hasLoaded { store.load() }
+        }
+        .background(SwiftUIPushDetailLink(route: $detailRoute, restoresTabBarOnPop: false))
+        .sheet(isPresented: Binding(
+            get: { commentsItem != nil },
+            set: { if !$0 { commentsItem = nil } }
+        )) {
+            if let commentsItem = commentsItem {
+                UIKitNavigationScreen { CommentsViewController(item: commentsItem) }
+            }
+        }
+        .sheet(isPresented: Binding(
+            get: { shareItem != nil },
+            set: { if !$0 { shareItem = nil } }
+        )) {
+            if let shareItem = shareItem {
+                UIKitShareSheet(items: [shareItem.title])
+            }
+        }
+        .alert("知乎", isPresented: Binding(
+            get: { actionMessage != nil },
+            set: { if !$0 { actionMessage = nil } }
+        )) {
+            Button("好的", role: .cancel) { actionMessage = nil }
+        } message: {
+            Text(actionMessage ?? "")
         }
     }
 }
@@ -1107,4 +1305,14 @@ struct UIKitNavigationScreen: UIViewControllerRepresentable {
         return UINavigationController(rootViewController: controller)
     }
     func updateUIViewController(_ uiViewController: UINavigationController, context: Context) {}
+}
+
+struct UIKitShareSheet: UIViewControllerRepresentable {
+    let items: [Any]
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: items, applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
