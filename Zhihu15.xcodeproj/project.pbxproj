@@ -45,6 +45,8 @@
 		A10000010000000000000025 /* SwiftUIAppRoot.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000026 /* SwiftUIAppRoot.swift */; };
 		A10000010000000000000026 /* RemoteProfileRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000027 /* RemoteProfileRepository.swift */; };
 		A10000010000000000000027 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000028 /* LaunchScreen.storyboard */; };
+		A10000010000000000000028 /* QuestionAnswersRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000029 /* QuestionAnswersRepository.swift */; };
+		A10000010000000000000029 /* QuestionAnswersViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000001000000000000002A /* QuestionAnswersViewController.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -88,6 +90,8 @@
 		B10000010000000000000026 /* SwiftUIAppRoot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftUIAppRoot.swift; sourceTree = "<group>"; };
 		B10000010000000000000027 /* RemoteProfileRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteProfileRepository.swift; sourceTree = "<group>"; };
 		B10000010000000000000028 /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
+		B10000010000000000000029 /* QuestionAnswersRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuestionAnswersRepository.swift; sourceTree = "<group>"; };
+		B1000001000000000000002A /* QuestionAnswersViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuestionAnswersViewController.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -151,6 +155,8 @@
 				B10000010000000000000026 /* SwiftUIAppRoot.swift */,
 				B10000010000000000000027 /* RemoteProfileRepository.swift */,
 				B10000010000000000000028 /* LaunchScreen.storyboard */,
+				B10000010000000000000029 /* QuestionAnswersRepository.swift */,
+				B1000001000000000000002A /* QuestionAnswersViewController.swift */,
 			);
 			path = Zhihu15;
 			sourceTree = "<group>";
@@ -269,6 +275,8 @@
 				A10000010000000000000024 /* RichContentView.swift in Sources */,
 				A10000010000000000000025 /* SwiftUIAppRoot.swift in Sources */,
 				A10000010000000000000026 /* RemoteProfileRepository.swift in Sources */,
+				A10000010000000000000028 /* QuestionAnswersRepository.swift in Sources */,
+				A10000010000000000000029 /* QuestionAnswersViewController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

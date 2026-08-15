@@ -202,9 +202,7 @@ struct SwiftUIHomeView: View {
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
             Task { await store.refresh() }
         }
-        .sheet(item: $detailRoute) { route in
-            UIKitNavigationScreen { DetailViewController(item: route.item) }
-        }
+        .background(SwiftUIPushDetailLink(route: $detailRoute))
         .sheet(isPresented: $showMessages) {
             UIKitNavigationScreen { MessagesViewController() }
         }
@@ -306,6 +304,34 @@ struct SwiftUIFeedCard: View {
 
 struct SwiftUIDetailRoute: Identifiable { let id = UUID(); let item: FeedItem }
 
+struct SwiftUIPushDetailLink: View {
+    @Binding var route: SwiftUIDetailRoute?
+
+    var body: some View {
+        NavigationLink(
+            destination: destination,
+            isActive: Binding(
+                get: { route != nil },
+                set: { isActive in
+                    if !isActive { route = nil }
+                }
+            )
+        ) {
+            EmptyView()
+        }
+        .hidden()
+    }
+
+    @ViewBuilder
+    private var destination: some View {
+        if let route = route {
+            UIKitNavigationScreen { DetailViewController(item: route.item) }
+        } else {
+            EmptyView()
+        }
+    }
+}
+
 struct CachedRemoteImage: View {
     let url: URL?
     @State private var image: UIImage?
@@ -402,7 +428,7 @@ struct SwiftUIProfileView: View {
         .sheet(isPresented: $showHistory) { UIKitNavigationScreen { HistoryViewController() } }
         .sheet(isPresented: $showAccounts) { UIKitNavigationScreen { AccountListViewController() } }
         .sheet(isPresented: $showAppLock) { UIKitNavigationScreen { AppLockSettingsViewController() } }
-        .sheet(item: $detailRoute) { route in UIKitNavigationScreen { DetailViewController(item: route.item) } }
+        .background(SwiftUIPushDetailLink(route: $detailRoute))
     }
 
     private var profileHeader: some View {
@@ -518,7 +544,7 @@ struct SwiftUICollectionView: View {
             .background(Color(uiColor: .systemGroupedBackground).ignoresSafeArea())
             .navigationTitle("收藏")
             .onAppear { load() }
-            .sheet(item: $detailRoute) { route in UIKitNavigationScreen { DetailViewController(item: route.item) } }
+            .background(SwiftUIPushDetailLink(route: $detailRoute))
     }
     private func load() { guard ZhihuAccountStore.shared.load()?.isLoggedIn == true else { return }; RemoteLibraryRepository.shared.fetchSavedItems { result in if case let .success(value) = result, !value.isEmpty { items = value } } }
 }
@@ -536,7 +562,7 @@ struct SwiftUISearchView: View {
         .background(Color(uiColor: .systemGroupedBackground).ignoresSafeArea())
         .navigationTitle("搜索")
         .onChange(of: query) { value in search(value) }
-        .sheet(item: $detailRoute) { route in UIKitNavigationScreen { DetailViewController(item: route.item) } }
+        .background(SwiftUIPushDetailLink(route: $detailRoute))
     }
     private func search(_ value: String) { let text = value.trimmingCharacters(in: .whitespacesAndNewlines); guard !text.isEmpty else { results = []; return }; RemoteFeedRepository.shared.search(query: text) { result in if case let .success(items) = result { results = items } } }
 }

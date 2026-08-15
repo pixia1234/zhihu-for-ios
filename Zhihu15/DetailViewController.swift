@@ -4,6 +4,8 @@ final class DetailViewController: UIViewController {
     private let item: FeedItem
     private let scrollView = UIScrollView()
     private let contentStack = UIStackView()
+    private let actionBar = UIVisualEffectView(effect: UIBlurEffect(style: .systemMaterial))
+    private let actionsStack = UIStackView()
     private let titleLabel = UILabel()
     private let richContentView = RichContentView()
     private let primaryActionButton = UIButton(type: .system)
@@ -30,6 +32,7 @@ final class DetailViewController: UIViewController {
         actions.append(UIBarButtonItem(image: UIImage(systemName: "safari"), style: .plain, target: self, action: #selector(openCanonicalURL)))
         navigationItem.rightBarButtonItems = actions
         setupScrollView()
+        setupActionBar()
         buildContent()
         loadRemoteContent()
     }
@@ -41,7 +44,7 @@ final class DetailViewController: UIViewController {
             scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             scrollView.topAnchor.constraint(equalTo: view.topAnchor),
-            scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+            scrollView.bottomAnchor.constraint(equalTo: actionBar.topAnchor)
         ])
 
         contentStack.axis = .vertical
@@ -57,6 +60,46 @@ final class DetailViewController: UIViewController {
             contentStack.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor),
             contentStack.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor)
         ])
+    }
+
+    private func setupActionBar() {
+        actionBar.translatesAutoresizingMaskIntoConstraints = false
+        actionBar.clipsToBounds = true
+        view.addSubview(actionBar)
+        NSLayoutConstraint.activate([
+            actionBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            actionBar.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            actionBar.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor)
+        ])
+
+        actionsStack.axis = .horizontal
+        actionsStack.spacing = 10
+        actionsStack.distribution = .fillEqually
+        actionsStack.translatesAutoresizingMaskIntoConstraints = false
+        actionBar.contentView.addSubview(actionsStack)
+        NSLayoutConstraint.activate([
+            actionsStack.leadingAnchor.constraint(equalTo: actionBar.contentView.leadingAnchor, constant: 16),
+            actionsStack.trailingAnchor.constraint(equalTo: actionBar.contentView.trailingAnchor, constant: -16),
+            actionsStack.topAnchor.constraint(equalTo: actionBar.contentView.topAnchor, constant: 10),
+            actionsStack.bottomAnchor.constraint(equalTo: actionBar.contentView.bottomAnchor, constant: -10)
+        ])
+
+        updatePrimaryActionTitle()
+        primaryActionButton.setImage(UIImage(systemName: item.kind == .question ? "person.badge.plus" : (hasVoted ? "arrow.up.circle.fill" : "arrow.up")), for: .normal)
+        primaryActionButton.tintColor = AppTheme.zhihuBlue
+        primaryActionButton.setTitleColor(AppTheme.zhihuBlue, for: .normal)
+        primaryActionButton.titleLabel?.font = .systemFont(ofSize: 14, weight: .medium)
+        primaryActionButton.backgroundColor = AppTheme.zhihuBlue.withAlphaComponent(0.08)
+        primaryActionButton.layer.cornerRadius = 9
+        primaryActionButton.contentEdgeInsets = UIEdgeInsets(top: 11, left: 4, bottom: 11, right: 4)
+        primaryActionButton.addTarget(self, action: #selector(primaryAction), for: .touchUpInside)
+        actionsStack.addArrangedSubview(primaryActionButton)
+        let commentsButton = actionButton(title: "\(item.comments > 0 ? item.comments : 0) 评论", image: "bubble.left")
+        commentsButton.addTarget(self, action: #selector(openComments), for: .touchUpInside)
+        actionsStack.addArrangedSubview(commentsButton)
+        let collectionButton = actionButton(title: "收藏", image: "bookmark")
+        collectionButton.addTarget(self, action: #selector(openCollectionPicker), for: .touchUpInside)
+        actionsStack.addArrangedSubview(collectionButton)
     }
 
     private func buildContent() {
@@ -98,8 +141,7 @@ final class DetailViewController: UIViewController {
         titleLabel.numberOfLines = 0
         contentStack.addArrangedSubview(titleLabel)
 
-        let topic = PillLabel(text: item.topic)
-        contentStack.addArrangedSubview(topic)
+        contentStack.addArrangedSubview(makeDivider())
 
         if let thumbnailURL = item.thumbnailURL {
             let imagePlaceholder = UIView()
@@ -139,30 +181,21 @@ final class DetailViewController: UIViewController {
         richContentView.load(markup: item.excerpt)
         contentStack.addArrangedSubview(richContentView)
 
-        let divider = UIView()
-        divider.backgroundColor = AppTheme.border
-        divider.heightAnchor.constraint(equalToConstant: 1).isActive = true
-        contentStack.addArrangedSubview(divider)
+        contentStack.addArrangedSubview(makeDivider())
 
-        let actions = UIStackView()
-        actions.axis = .horizontal
-        actions.spacing = 10
-        actions.distribution = .fillEqually
-        updatePrimaryActionTitle()
-        primaryActionButton.setImage(UIImage(systemName: item.kind == .question ? "person.badge.plus" : (hasVoted ? "arrow.up.circle.fill" : "arrow.up")), for: .normal)
-        primaryActionButton.tintColor = AppTheme.zhihuBlue
-        primaryActionButton.setTitleColor(AppTheme.zhihuBlue, for: .normal)
-        primaryActionButton.titleLabel?.font = .systemFont(ofSize: 14, weight: .medium)
-        primaryActionButton.backgroundColor = AppTheme.zhihuBlue.withAlphaComponent(0.08)
-        primaryActionButton.layer.cornerRadius = 9
-        primaryActionButton.contentEdgeInsets = UIEdgeInsets(top: 11, left: 4, bottom: 11, right: 4)
-        primaryActionButton.addTarget(self, action: #selector(primaryAction), for: .touchUpInside)
-        actions.addArrangedSubview(primaryActionButton)
-        actions.addArrangedSubview(actionButton(title: "\(item.comments > 0 ? item.comments : 0) 评论", image: "bubble.left"))
-        let collectionButton = actionButton(title: "收藏", image: "bookmark")
-        collectionButton.addTarget(self, action: #selector(openCollectionPicker), for: .touchUpInside)
-        actions.addArrangedSubview(collectionButton)
-        contentStack.addArrangedSubview(actions)
+        if item.kind == .question {
+            let answersButton = UIButton(type: .system)
+            answersButton.setTitle("查看全部回答", for: .normal)
+            answersButton.setImage(UIImage(systemName: "chevron.right"), for: .normal)
+            answersButton.semanticContentAttribute = .forceRightToLeft
+            answersButton.contentHorizontalAlignment = .left
+            answersButton.tintColor = AppTheme.zhihuBlue
+            answersButton.setTitleColor(AppTheme.zhihuBlue, for: .normal)
+            answersButton.titleLabel?.font = .systemFont(ofSize: 16, weight: .semibold)
+            answersButton.contentEdgeInsets = UIEdgeInsets(top: 4, left: 0, bottom: 4, right: 0)
+            answersButton.addTarget(self, action: #selector(openAnswers), for: .touchUpInside)
+            contentStack.addArrangedSubview(answersButton)
+        }
 
         let relatedTitle = UILabel()
         relatedTitle.text = "相关内容"
@@ -175,6 +208,13 @@ final class DetailViewController: UIViewController {
         related.font = .systemFont(ofSize: 16)
         related.numberOfLines = 0
         contentStack.addArrangedSubview(related)
+    }
+
+    private func makeDivider() -> UIView {
+        let divider = UIView()
+        divider.backgroundColor = AppTheme.border
+        divider.heightAnchor.constraint(equalToConstant: 1).isActive = true
+        return divider
     }
 
     private func loadRemoteContent() {
@@ -201,6 +241,16 @@ final class DetailViewController: UIViewController {
 
     @objc private func openComments() {
         navigationController?.pushViewController(CommentsViewController(item: item), animated: true)
+    }
+
+    @objc private func openAnswers() {
+        guard item.kind == .question else { return }
+        let questionID = item.contentID ?? item.questionID ?? 0
+        guard questionID > 0 else {
+            showActionResult(.failure(ZhihuSessionError.malformedPayload), success: "")
+            return
+        }
+        navigationController?.pushViewController(QuestionAnswersViewController(question: item), animated: true)
     }
 
     @objc private func openVideo() {
