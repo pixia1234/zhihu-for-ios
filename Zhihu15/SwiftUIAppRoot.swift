@@ -3,6 +3,7 @@ import UIKit
 
 struct SwiftUIAppRootView: View {
     @State private var selectedTab = 0
+    @State private var isTabBarHidden = false
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -22,6 +23,14 @@ struct SwiftUIAppRootView: View {
                 .tag(2)
         }
         .accentColor(Color(red: 0.08, green: 0.38, blue: 0.86))
+        // Hiding UITabBar alone does not remove the safe-area reservation on
+        // iOS 15. Release the same bottom region from SwiftUI while a detail
+        // or answers page is pushed, so its native bottomBar sits at the
+        // actual bottom edge instead of above an invisible home tab bar.
+        .ignoresSafeArea(.container, edges: isTabBarHidden ? Edge.Set.bottom : Edge.Set())
+        .onReceive(NotificationCenter.default.publisher(for: .zhihuTabBarVisibilityChanged)) { notification in
+            isTabBarHidden = notification.userInfo?["hidden"] as? Bool ?? false
+        }
         .onReceive(NotificationCenter.default.publisher(for: .zhihuHandoffOpenItem)) { _ in
             selectedTab = 0
         }

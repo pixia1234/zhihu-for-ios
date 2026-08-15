@@ -3,6 +3,7 @@ import UIKit
 
 extension Notification.Name {
     static let zhihuHandoffOpenItem = Notification.Name("ZhihuHandoffOpenItem")
+    static let zhihuTabBarVisibilityChanged = Notification.Name("ZhihuTabBarVisibilityChanged")
 }
 
 final class HandoffCoordinator {

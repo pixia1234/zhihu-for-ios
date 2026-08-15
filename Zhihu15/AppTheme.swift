@@ -103,6 +103,16 @@ enum AppTheme {
             return
         }
 
+        // The UIKit bar and SwiftUI's safe-area environment are separate
+        // layout systems. Notify the SwiftUI root at the same single entry
+        // point so TabView can release/reclaim the bottom inset as well as
+        // hiding/showing the live UITabBar.
+        NotificationCenter.default.post(
+            name: .zhihuTabBarVisibilityChanged,
+            object: nil,
+            userInfo: ["hidden": hidden]
+        )
+
         let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
         for scene in scenes {
             for window in scene.windows {
