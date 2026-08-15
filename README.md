@@ -26,7 +26,7 @@
 
 ## 运行
 
-在 macOS + Xcode 中打开 `Zhihu15.xcodeproj`，选择 iOS 15 或更高版本模拟器运行。工程文件保持 Xcode 13 格式，真机运行前在 Signing & Capabilities 中设置自己的 Team 和 Bundle Identifier。
+在 macOS + Xcode 中打开 `Zhihu15.xcodeproj`，选择 iOS 15 或更高版本模拟器运行。当前包标识为 `com.pixia.zhihu15.client`，工程文件保持 Xcode 13 格式，真机运行前在 Signing & Capabilities 中设置自己的 Team 和签名配置。
 
 如果安装了 XcodeGen，也可以先执行 `xcodegen generate`，工程会从 `project.yml` 重新生成；默认打包脚本使用仓库中已提交的工程文件，以便兼容 Xcode 13.4.1。需要重新生成时设置 `REGENERATE_XCODE_PROJECT=1`。
 

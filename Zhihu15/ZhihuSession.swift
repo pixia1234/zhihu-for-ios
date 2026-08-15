@@ -34,7 +34,10 @@ private struct ZhihuAccountVault: Codable {
 final class ZhihuAccountStore {
     static let shared = ZhihuAccountStore()
 
-    private let service = "com.example.zhihu15.account"
+    // Keep the Keychain namespace aligned with the new bundle identifier so
+    // the new build starts with a clean account container instead of reusing
+    // credentials left by the previous package.
+    private let service = "com.pixia.zhihu15.client.account"
     private let account = "current"
     private let lock = NSLock()
 
@@ -224,8 +227,7 @@ final class ZhihuAPIClient {
             }
             guard let http = response as? HTTPURLResponse,
                   let responseURL = http.url,
-                  ZhihuURLPolicy.allows(responseURL),
-                  let data = data else {
+                  ZhihuURLPolicy.allows(responseURL) else {
                 self?.callbackQueue.async { completion(.failure(ZhihuSessionError.invalidResponse)) }
                 return
             }
@@ -234,7 +236,9 @@ final class ZhihuAPIClient {
                 self?.callbackQueue.async { completion(.failure(ZhihuSessionError.httpStatus(http.statusCode))) }
                 return
             }
-            self?.callbackQueue.async { completion(.success(data)) }
+            // Vote/follow mutations may legitimately return HTTP 204 with no
+            // body. Treat that as a successful empty response.
+            self?.callbackQueue.async { completion(.success(data ?? Data())) }
         }.resume()
     }
 

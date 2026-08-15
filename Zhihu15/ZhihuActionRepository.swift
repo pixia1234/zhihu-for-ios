@@ -6,16 +6,45 @@ struct ZhihuCollectionOption {
     let isSelected: Bool
 }
 
+struct ZhihuVoteMutation {
+    let isVoted: Bool
+    let upvoteCount: Int?
+}
+
 final class ZhihuActionRepository {
     static let shared = ZhihuActionRepository(client: .shared)
     private let client: ZhihuAPIClient
 
     init(client: ZhihuAPIClient) { self.client = client }
 
-    func vote(answerID: Int64, up: Bool, completion: @escaping (Result<Void, Error>) -> Void) {
-        let url = URL(string: "https://www.zhihu.com/api/v4/answers/\(answerID)/voters")!
-        let body = try? JSONSerialization.data(withJSONObject: ["type": up ? "up" : "neutral"], options: [])
-        client.request(url, method: "POST", body: body, headers: ["Content-Type": "application/json"], requiresLogin: true) { result in completion(result.map { _ in () }) }
+    func vote(contentID: Int64, kind: FeedItem.Kind, up: Bool, completion: @escaping (Result<ZhihuVoteMutation, Error>) -> Void) {
+        guard contentID > 0 else {
+            completion(.failure(ZhihuSessionError.malformedPayload))
+            return
+        }
+        let path: String
+        let bodyObject: [String: Any]
+        switch kind {
+        case .answer:
+            path = "answers"
+            bodyObject = ["type": up ? "up" : "neutral"]
+        case .article:
+            path = "articles"
+            bodyObject = ["voting": up ? 1 : 0]
+        default:
+            completion(.failure(ZhihuSessionError.malformedPayload))
+            return
+        }
+        let url = URL(string: "https://www.zhihu.com/api/v4/\(path)/\(contentID)/voters")!
+        let body = try? JSONSerialization.data(withJSONObject: bodyObject, options: [.sortedKeys])
+        client.request(url, method: "POST", body: body, headers: ["Content-Type": "application/json"], requiresLogin: true) { result in
+            switch result {
+            case let .failure(error): completion(.failure(error))
+            case let .success(data):
+                let count = Self.voteCount(from: data)
+                completion(.success(ZhihuVoteMutation(isVoted: up, upvoteCount: count)))
+            }
+        }
     }
 
     func follow(questionID: Int64, following: Bool, completion: @escaping (Result<Void, Error>) -> Void) {
@@ -111,6 +140,18 @@ final class ZhihuActionRepository {
         if let value = value as? Bool { return value }
         if let value = value as? NSNumber { return value.boolValue }
         if let value = value as? String { return value == "true" || value == "1" }
+        return nil
+    }
+
+    private static func voteCount(from data: Data) -> Int? {
+        guard !data.isEmpty,
+              let object = try? JSONSerialization.jsonObject(with: data),
+              let root = object as? [String: Any]
+        else { return nil }
+        if let value = root["voteup_count"] as? NSNumber { return value.intValue }
+        if let value = root["voteup_count"] as? String { return Int(value) }
+        if let value = root["vote_count"] as? NSNumber { return value.intValue }
+        if let value = root["vote_count"] as? String { return Int(value) }
         return nil
     }
 }

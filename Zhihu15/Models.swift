@@ -17,6 +17,7 @@ struct FeedItem {
     let excerpt: String
     let topic: String
     var upvotes: Int
+    var isVoted: Bool
     var comments: Int
     let hasImage: Bool
     let imageColor: UIColor
@@ -38,6 +39,7 @@ struct FeedItem {
         comments: Int,
         hasImage: Bool,
         imageColor: UIColor,
+        isVoted: Bool = false,
         avatarURL: URL? = nil,
         thumbnailURL: URL? = nil,
         contentID: Int64? = nil,
@@ -52,6 +54,7 @@ struct FeedItem {
         self.excerpt = excerpt
         self.topic = topic
         self.upvotes = upvotes
+        self.isVoted = isVoted
         self.comments = comments
         self.hasImage = hasImage
         self.imageColor = imageColor

@@ -15,6 +15,7 @@ final class DetailViewController: UIViewController {
     init(item: FeedItem) {
         self.item = item
         self.displayedUpvotes = item.upvotes
+        self.hasVoted = item.isVoted
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -148,7 +149,7 @@ final class DetailViewController: UIViewController {
         actions.spacing = 10
         actions.distribution = .fillEqually
         updatePrimaryActionTitle()
-        primaryActionButton.setImage(UIImage(systemName: item.kind == .question ? "person.badge.plus" : "arrow.up"), for: .normal)
+        primaryActionButton.setImage(UIImage(systemName: item.kind == .question ? "person.badge.plus" : (hasVoted ? "arrow.up.circle.fill" : "arrow.up")), for: .normal)
         primaryActionButton.tintColor = AppTheme.zhihuBlue
         primaryActionButton.setTitleColor(AppTheme.zhihuBlue, for: .normal)
         primaryActionButton.titleLabel?.font = .systemFont(ofSize: 14, weight: .medium)
@@ -182,6 +183,9 @@ final class DetailViewController: UIViewController {
             guard let self = self else { return }
             if case let .success(content) = result {
                 self.titleLabel.text = content.title
+                if let upvoteCount = content.upvoteCount { self.displayedUpvotes = upvoteCount }
+                if let isVoted = content.isVoted { self.hasVoted = isVoted }
+                self.updatePrimaryActionTitle()
                 let authorText = [content.author, content.authorHeadline].compactMap { $0 }.joined(separator: " · ")
                 self.richContentView.load(markup: content.bodyHTML.isEmpty ? content.body : content.bodyHTML)
                 self.navigationItem.prompt = authorText.isEmpty ? nil : authorText
@@ -233,19 +237,24 @@ final class DetailViewController: UIViewController {
                 self?.showActionResult(result, success: "已关注这个问题")
             }
         } else if let contentID = item.contentID, contentID > 0 {
-            guard !isVoting, !hasVoted else { return }
+            guard !isVoting else { return }
+            let requestedVote = !hasVoted
             isVoting = true
             primaryActionButton.isEnabled = false
-            ZhihuActionRepository.shared.vote(answerID: contentID, up: true) { [weak self] result in
+            ZhihuActionRepository.shared.vote(contentID: contentID, kind: item.kind, up: requestedVote) { [weak self] result in
                 guard let self = self else { return }
                 self.isVoting = false
-                if case .success = result {
-                    self.hasVoted = true
-                    self.displayedUpvotes += 1
+                if case let .success(mutation) = result {
+                    if let serverCount = mutation.upvoteCount {
+                        self.displayedUpvotes = max(0, serverCount)
+                    } else if self.hasVoted != mutation.isVoted {
+                        self.displayedUpvotes = max(0, self.displayedUpvotes + (mutation.isVoted ? 1 : -1))
+                    }
+                    self.hasVoted = mutation.isVoted
                     self.updatePrimaryActionTitle()
                 }
-                self.primaryActionButton.isEnabled = !self.hasVoted
-                self.showActionResult(result, success: "已赞同")
+                self.primaryActionButton.isEnabled = true
+                self.showActionResult(result.map { _ in () }, success: requestedVote ? "已赞同" : "已取消赞同")
             }
         } else {
             showActionResult(.failure(ZhihuSessionError.malformedPayload), success: "")
@@ -257,8 +266,14 @@ final class DetailViewController: UIViewController {
             primaryActionButton.setTitle("关注问题", for: .normal)
             return
         }
-        let title = displayedUpvotes > 0 ? "\(displayedUpvotes) 赞同" : "赞同"
+        let title: String
+        if hasVoted {
+            title = displayedUpvotes > 0 ? "\(displayedUpvotes) 已赞同" : "已赞同"
+        } else {
+            title = displayedUpvotes > 0 ? "\(displayedUpvotes) 赞同" : "赞同"
+        }
         primaryActionButton.setTitle(title, for: .normal)
+        primaryActionButton.setImage(UIImage(systemName: hasVoted ? "arrow.up.circle.fill" : "arrow.up"), for: .normal)
     }
 
     @objc private func openCollectionPicker() {

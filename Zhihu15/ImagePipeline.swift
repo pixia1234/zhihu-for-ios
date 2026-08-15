@@ -28,22 +28,22 @@ final class ImagePipeline {
     static let shared = ImagePipeline()
 
     private let memory = NSCache<NSURL, UIImage>()
-    private let diskQueue = DispatchQueue(label: "com.example.zhihu15.image-cache", qos: .utility)
+    private let diskQueue = DispatchQueue(label: "com.pixia.zhihu15.client.image-cache", qos: .utility)
     private let session: URLSession
     private let directory: URL
 
     init() {
         memory.countLimit = 180
         memory.totalCostLimit = 48 * 1024 * 1024
-        let configuration = URLSessionConfiguration.default
-        configuration.requestCachePolicy = .returnCacheDataElseLoad
-        configuration.urlCache = URLCache(memoryCapacity: 16 * 1024 * 1024, diskCapacity: 64 * 1024 * 1024, diskPath: "zhihu-images")
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
+        configuration.urlCache = nil
         session = URLSession(configuration: configuration)
         let base = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
         // The old cache may contain AVIF/HTML responses produced by the
         // previous Accept header. Use a new namespace so iOS 15 never reuses
         // those undecodable/blank files after an app update.
-        directory = base.appendingPathComponent("zhihu15-images-v3", isDirectory: true)
+        directory = base.appendingPathComponent("zhihu15-images-v4", isDirectory: true)
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     }
 
@@ -66,13 +66,21 @@ final class ImagePipeline {
                 return
             }
             var request = URLRequest(url: normalizedURL)
-            request.cachePolicy = .useProtocolCachePolicy
+            // The URLCache used by older builds could contain a 4 KB AVIF or
+            // CDN error response. The app has its own validated image cache,
+            // so never consult URLCache for a new network fetch.
+            request.cachePolicy = .reloadIgnoringLocalCacheData
             // Do not advertise AVIF first: iOS 15 devices cannot reliably
             // decode all AVIF responses returned by Zhihu's image CDN.
             request.setValue("image/jpeg,image/png,image/webp,image/gif,*/*;q=0.8", forHTTPHeaderField: "Accept")
             request.setValue("identity", forHTTPHeaderField: "Accept-Encoding")
-            request.setValue(ZhihuAccountStore.shared.load()?.userAgent ?? "Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148", forHTTPHeaderField: "User-Agent")
+            request.setValue(Self.imageUserAgent, forHTTPHeaderField: "User-Agent")
             request.setValue("https://www.zhihu.com/", forHTTPHeaderField: "Referer")
+            request.setValue("https://www.zhihu.com", forHTTPHeaderField: "Origin")
+            request.setValue("zh-CN,zh;q=0.9,en;q=0.8", forHTTPHeaderField: "Accept-Language")
+            request.setValue("image", forHTTPHeaderField: "Sec-Fetch-Dest")
+            request.setValue("no-cors", forHTTPHeaderField: "Sec-Fetch-Mode")
+            request.setValue("cross-site", forHTTPHeaderField: "Sec-Fetch-Site")
             self?.session.dataTask(with: request) { [weak self] data, response, _ in
                 guard let data = data,
                       let http = response as? HTTPURLResponse,
@@ -108,18 +116,24 @@ final class ImagePipeline {
 
     private static func decode(_ data: Data) -> UIImage? {
         guard data.count > 64 else { return nil }
-        guard let source = CGImageSourceCreateWithData(data as CFData, nil) else { return UIImage(data: data) }
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil) else { return nil }
         let options: [CFString: Any] = [
             kCGImageSourceCreateThumbnailFromImageAlways: true,
             kCGImageSourceCreateThumbnailWithTransform: true,
             kCGImageSourceThumbnailMaxPixelSize: 2048,
             kCGImageSourceShouldCacheImmediately: true
         ]
-        guard let cgImage = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else {
-            return UIImage(data: data)
+        if let cgImage = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) {
+            guard cgImage.width >= 8, cgImage.height >= 8 else { return nil }
+            return UIImage(cgImage: cgImage)
         }
+        guard let cgImage = CGImageSourceCreateImageAtIndex(source, 0, [kCGImageSourceShouldCache: true] as CFDictionary),
+              cgImage.width >= 8,
+              cgImage.height >= 8 else { return nil }
         return UIImage(cgImage: cgImage)
     }
+
+    private static let imageUserAgent = "Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148"
 
     private static func isImageResponse(_ response: HTTPURLResponse, data: Data) -> Bool {
         if let contentType = response.value(forHTTPHeaderField: "Content-Type")?.lowercased() {

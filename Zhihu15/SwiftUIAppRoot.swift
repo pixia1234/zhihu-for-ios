@@ -28,7 +28,6 @@ final class SwiftUIFeedStore: ObservableObject {
     @Published private(set) var hasLoaded = false
     @Published private(set) var canLoadMore = false
     @Published var errorMessage: String?
-    private var locallyVotedItemIDs = Set<Int>()
     private var nextPageURL: URL?
 
     func load(channel: HomeChannel? = nil) {
@@ -101,22 +100,22 @@ final class SwiftUIFeedStore: ObservableObject {
         }
     }
 
-    func vote(item: FeedItem, completion: @escaping (Result<Void, Error>) -> Void) {
+    func vote(item: FeedItem, completion: @escaping (Result<ZhihuVoteMutation, Error>) -> Void) {
         guard item.kind != .question, let contentID = item.contentID, contentID > 0 else {
             completion(.failure(ZhihuSessionError.malformedPayload))
             return
         }
-        guard !locallyVotedItemIDs.contains(item.id) else {
-            completion(.success(()))
-            return
-        }
-
-        ZhihuActionRepository.shared.vote(answerID: contentID, up: true) { [weak self] result in
+        let requestedVote = !item.isVoted
+        ZhihuActionRepository.shared.vote(contentID: contentID, kind: item.kind, up: requestedVote) { [weak self] result in
             guard let self = self else { return }
-            if case .success = result,
+            if case let .success(mutation) = result,
                let index = self.items.firstIndex(where: { $0.id == item.id }) {
-                self.locallyVotedItemIDs.insert(item.id)
-                self.items[index].upvotes += 1
+                self.items[index].isVoted = mutation.isVoted
+                if let serverCount = mutation.upvoteCount {
+                    self.items[index].upvotes = max(0, serverCount)
+                } else {
+                    self.items[index].upvotes = max(0, self.items[index].upvotes + (mutation.isVoted ? 1 : -1))
+                }
             }
             completion(result)
         }
@@ -152,7 +151,7 @@ struct SwiftUIHomeView: View {
                             store.vote(item: item) { result in
                                 switch result {
                                 case .success:
-                                    actionMessage = "已赞同"
+                                    actionMessage = item.isVoted ? "已取消赞同" : "已赞同"
                                 case let .failure(error):
                                     if let sessionError = error as? ZhihuSessionError,
                                        case .authenticationRequired = sessionError {
@@ -285,11 +284,11 @@ struct SwiftUIFeedCard: View {
             HStack(spacing: 16) {
                 if let onVote = onVote {
                     Button(action: onVote) {
-                        Label(item.upvotes > 0 ? "\(item.upvotes)" : "赞同", systemImage: "arrow.up")
+                        Label(item.isVoted ? "已赞同" : (item.upvotes > 0 ? "\(item.upvotes)" : "赞同"), systemImage: item.isVoted ? "arrow.up.circle.fill" : "arrow.up")
                     }
                     .buttonStyle(.borderless)
                 } else {
-                    Label(item.upvotes > 0 ? "\(item.upvotes)" : "赞同", systemImage: "arrow.up")
+                    Label(item.isVoted ? "已赞同" : (item.upvotes > 0 ? "\(item.upvotes)" : "赞同"), systemImage: item.isVoted ? "arrow.up.circle.fill" : "arrow.up")
                 }
                 Label(item.comments > 0 ? "\(item.comments)" : "评论", systemImage: "bubble.left")
                 Spacer()

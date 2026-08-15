@@ -221,13 +221,15 @@ final class HomeViewController: UIViewController {
                 ZhihuActionRepository.shared.follow(questionID: questionID, following: true) { [weak self] result in
                     self?.showActionResult(result, success: "已关注这个问题")
                 }
-            } else if item.kind == .answer, let answerID = item.contentID, answerID > 0 {
-                ZhihuActionRepository.shared.vote(answerID: answerID, up: true) { [weak self] result in
+            } else if let contentID = item.contentID, contentID > 0, (item.kind == .answer || item.kind == .article) {
+                let isVoted = item.isVoted || locallyVotedItemIDs.contains(item.id)
+                let requestedVote = !isVoted
+                ZhihuActionRepository.shared.vote(contentID: contentID, kind: item.kind, up: requestedVote) { [weak self] result in
                     guard let self = self else { return }
-                    if case .success = result {
-                        self.markLocallyVoted(item)
+                    if case let .success(mutation) = result {
+                        self.updateLocalVote(item, voted: mutation.isVoted, serverCount: mutation.upvoteCount)
                     }
-                    self.showActionResult(result, success: "已赞同")
+                    self.showActionResult(result.map { _ in () }, success: requestedVote ? "已赞同" : "已取消赞同")
                 }
             } else {
                 showActionResult(.failure(ZhihuSessionError.malformedPayload), success: "")
@@ -244,11 +246,16 @@ final class HomeViewController: UIViewController {
         }
     }
 
-    private func markLocallyVoted(_ item: FeedItem) {
-        guard !locallyVotedItemIDs.contains(item.id),
-              let index = items.firstIndex(where: { $0.id == item.id }) else { return }
-        locallyVotedItemIDs.insert(item.id)
-        items[index].upvotes += 1
+    private func updateLocalVote(_ item: FeedItem, voted: Bool, serverCount: Int?) {
+        guard let index = items.firstIndex(where: { $0.id == item.id }) else { return }
+        let oldValue = items[index].isVoted || locallyVotedItemIDs.contains(item.id)
+        items[index].isVoted = voted
+        if voted { locallyVotedItemIDs.insert(item.id) } else { locallyVotedItemIDs.remove(item.id) }
+        if let serverCount {
+            items[index].upvotes = max(0, serverCount)
+        } else if oldValue != voted {
+            items[index].upvotes = max(0, items[index].upvotes + (voted ? 1 : -1))
+        }
         tableView.reloadRows(at: [IndexPath(row: index, section: 0)], with: .none)
     }
 

@@ -138,10 +138,7 @@ private enum RichContentHTML {
         html = replace(html, pattern: #"(?i)\s+on[a-z]+\s*=\s*(\"[^\"]*\"|'[^']*')"#, with: "")
         html = replace(html, pattern: #"(?i)javascript:"#, with: "")
         html = replace(html, pattern: #"(?i)http://((?:pic|static|zhimg)[^\"'\s>]+)"#, with: "https://$1")
-        // Zhihu occasionally sends a lazy-loading source in data-original or
-        // data-src. When no normal src exists this makes the image visible.
-        html = replace(html, pattern: #"(?i)<img([^>]*?)data-(?:original|src|actualsrc|lazy-src)\s*=\s*[\"']([^\"']+)[\"']([^>]*)>"#, with: "<img$1 src=\"$2\"$3>")
-        return html
+        return normalizeImageTags(html)
     }
 
     private static func markdownHTML(_ source: String) -> String {
@@ -192,5 +189,39 @@ private enum RichContentHTML {
         guard let expression = try? NSRegularExpression(pattern: pattern, options: []) else { return value }
         let range = NSRange(value.startIndex..<value.endIndex, in: value)
         return expression.stringByReplacingMatches(in: value, options: [], range: range, withTemplate: template)
+    }
+
+    private static func normalizeImageTags(_ value: String) -> String {
+        guard let expression = try? NSRegularExpression(pattern: #"(?is)<img\b[^>]*>"#) else { return value }
+        var result = value
+        let sourceRange = NSRange(value.startIndex..<value.endIndex, in: value)
+        for match in expression.matches(in: value, range: sourceRange).reversed() {
+            guard let tagRange = Range(match.range, in: value) else { continue }
+            let tag = String(value[tagRange])
+            let attributes = ["data-actualsrc", "data-original", "data-src", "data-lazy-src", "src"]
+            var sourceURL: URL?
+            for attribute in attributes {
+                let pattern = #"(?i)\b"# + attribute + #"\s*=\s*[\"']([^\"']+)[\"']"#
+                guard let attributeExpression = try? NSRegularExpression(pattern: pattern),
+                      let attributeMatch = attributeExpression.firstMatch(in: tag, range: NSRange(tag.startIndex..<tag.endIndex, in: tag)),
+                      let valueRange = Range(attributeMatch.range(at: 1), in: tag) else { continue }
+                let raw = String(tag[valueRange]).replacingOccurrences(of: "&amp;", with: "&")
+                if let url = ZhihuMediaURL.from(raw) {
+                    sourceURL = url
+                    break
+                }
+            }
+            guard let sourceURL else { continue }
+            var normalizedTag = tag
+            for attribute in attributes {
+                normalizedTag = replace(normalizedTag, pattern: #"(?i)\s+"# + attribute + #"\s*=\s*[\"'][^\"']*[\"']"#, with: "")
+            }
+            let escapedURL = sourceURL.absoluteString.replacingOccurrences(of: "&", with: "&amp;")
+            normalizedTag = normalizedTag.replacingOccurrences(of: "<img", with: "<img src=\"\(escapedURL)\"", options: [.caseInsensitive], range: normalizedTag.startIndex..<normalizedTag.endIndex)
+            if let resultRange = Range(match.range, in: result) {
+                result.replaceSubrange(resultRange, with: normalizedTag)
+            }
+        }
+        return result
     }
 }

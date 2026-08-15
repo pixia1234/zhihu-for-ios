@@ -98,7 +98,7 @@ final class QRScannerViewController: UIViewController, AVCaptureMetadataOutputOb
     var onCode: ((String) -> Void)?
     var onFailure: ((String) -> Void)?
     private let session = AVCaptureSession()
-    private let queue = DispatchQueue(label: "com.example.zhihu15.qr-scanner")
+    private let queue = DispatchQueue(label: "com.pixia.zhihu15.client.qr-scanner")
     private var previewLayer: AVCaptureVideoPreviewLayer?
     private var delivered = false
 

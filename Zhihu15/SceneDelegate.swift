@@ -10,9 +10,6 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         options connectionOptions: UIScene.ConnectionOptions
     ) {
         guard let windowScene = scene as? UIWindowScene else { return }
-        if UIDevice.current.userInterfaceIdiom == .pad {
-            windowScene.sizeRestrictions?.minimumSize = CGSize(width: 320, height: 320)
-        }
         AppTheme.configureNavigationBar(UINavigationBar.appearance())
         AppTheme.configureTabBar(UITabBar.appearance())
         let window = UIWindow(windowScene: windowScene)

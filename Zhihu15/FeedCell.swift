@@ -75,7 +75,10 @@ final class FeedCell: UITableViewCell {
             previewImageView.image = nil
             previewIcon.isHidden = false
         }
-        upvoteButton.setTitle(item.upvotes > 0 ? "\(item.upvotes)" : "赞同", for: .normal)
+        upvoteButton.setTitle(item.isVoted ? "已赞同" : (item.upvotes > 0 ? "\(item.upvotes)" : "赞同"), for: .normal)
+        upvoteButton.tintColor = item.isVoted ? AppTheme.zhihuBlue : AppTheme.secondaryText
+        upvoteButton.setTitleColor(item.isVoted ? AppTheme.zhihuBlue : AppTheme.secondaryText, for: .normal)
+        upvoteButton.setImage(UIImage(systemName: item.isVoted ? "arrow.up.circle.fill" : "arrow.up"), for: .normal)
         commentButton.setTitle(item.comments > 0 ? "\(item.comments)" : "评论", for: .normal)
         let icon = item.kind == .video ? "play.circle.fill" : "photo.on.rectangle.angled"
         previewIcon.image = UIImage(systemName: icon)

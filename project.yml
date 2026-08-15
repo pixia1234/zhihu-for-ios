@@ -7,7 +7,7 @@ options:
 
 settings:
   base:
-    PRODUCT_BUNDLE_IDENTIFIER: com.example.zhihu15
+    PRODUCT_BUNDLE_IDENTIFIER: com.pixia.zhihu15.client
     PRODUCT_NAME: Zhihu15
     SWIFT_VERSION: "5.0"
     CURRENT_PROJECT_VERSION: 1

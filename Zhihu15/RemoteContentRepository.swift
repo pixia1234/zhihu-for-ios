@@ -8,6 +8,8 @@ struct RemoteContent {
     let authorHeadline: String?
     let imageURL: URL?
     let canonicalURL: URL?
+    let upvoteCount: Int?
+    let isVoted: Bool?
 }
 
 final class RemoteContentRepository {
@@ -24,13 +26,13 @@ final class RemoteContentRepository {
         let url: URL
         switch item.kind {
         case .answer:
-            url = URL(string: "https://www.zhihu.com/api/v4/answers/\(contentID)?include=content,author,question,voteup_count,comment_count")!
+            url = URL(string: "https://www.zhihu.com/api/v4/answers/\(contentID)?include=content,author,question,voteup_count,comment_count,relationship,reaction")!
         case .question:
             url = URL(string: "https://www.zhihu.com/api/v4/questions/\(contentID)?include=detail,author,answer_count,follower_count")!
         case .article:
             url = URL(string: "https://zhuanlan.zhihu.com/api/articles/\(contentID)")!
         case .video:
-            completion(.success(RemoteContent(title: item.title, body: item.excerpt, bodyHTML: item.excerpt, author: item.author, authorHeadline: item.authorRole, imageURL: item.thumbnailURL, canonicalURL: Self.canonicalURLForDisplay(item))))
+            completion(.success(RemoteContent(title: item.title, body: item.excerpt, bodyHTML: item.excerpt, author: item.author, authorHeadline: item.authorRole, imageURL: item.thumbnailURL, canonicalURL: Self.canonicalURLForDisplay(item), upvoteCount: item.upvotes, isVoted: item.isVoted)))
             return
         }
         client.request(url, requiresLogin: false) { result in
@@ -56,7 +58,10 @@ final class RemoteContentRepository {
         let headline = string(author?["headline"]) ?? fallback.authorRole
         let image = ZhihuMediaURL.from(root["image_url"] ?? root["imageUrl"]) ?? fallback.thumbnailURL
         let canonicalURL = (string(root["url"]) ?? string(root["url_token"])).flatMap(URL.init(string:)) ?? Self.canonicalURLForDisplay(fallback)
-        return RemoteContent(title: plainText(title), body: body, bodyHTML: bodyHTML, author: authorName, authorHeadline: headline, imageURL: image, canonicalURL: canonicalURL)
+        let relation = (root["reaction"] as? [String: Any])?["relation"] as? [String: Any] ?? root["relationship"] as? [String: Any]
+        let isVoted: Bool? = relation == nil ? nil : ((relation?["voting"] as? NSNumber)?.intValue == 1 || string(relation?["vote"])?.lowercased() == "up")
+        let upvoteCount = (root["voteup_count"] as? NSNumber)?.intValue ?? fallback.upvotes
+        return RemoteContent(title: plainText(title), body: body, bodyHTML: bodyHTML, author: authorName, authorHeadline: headline, imageURL: image, canonicalURL: canonicalURL, upvoteCount: upvoteCount, isVoted: isVoted)
     }
 
     private static func string(_ value: Any?) -> String? { value as? String }

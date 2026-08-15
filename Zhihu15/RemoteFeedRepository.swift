@@ -117,10 +117,11 @@ final class RemoteFeedRepository {
             let thumbnailURL = Self.mediaURL(from: target)
             let topic = string((target["topic"] as? [String: Any])?["name"]) ?? (kind == .article ? "文章" : kind == .video ? "视频" : "问题")
             let upvotes = int(target["voteup_count"]) ?? int(target["vote_count"]) ?? int(target["like_count"]) ?? 0
+            let isVoted = Self.isVoted(target)
             let comments = int(target["comment_count"]) ?? 0
             let questionID = int(question?["id"]).map(Int64.init)
             let fallbackID = Int(UInt64(rawID.hashValue.magnitude) % UInt64(Int.max))
-            return FeedItem(id: Int(rawID) ?? fallbackID, kind: kind, author: authorName, authorRole: string(author?["headline"]) ?? "知乎创作者", avatarColor: color(for: rawID), title: plainText(title), excerpt: excerpt.isEmpty ? "打开查看完整内容" : excerpt, topic: topic, upvotes: upvotes, comments: comments, hasImage: thumbnailURL != nil, imageColor: AppTheme.zhihuBlue.withAlphaComponent(0.08), avatarURL: avatarURL, thumbnailURL: thumbnailURL, contentID: Int64(rawID), questionID: questionID)
+            return FeedItem(id: Int(rawID) ?? fallbackID, kind: kind, author: authorName, authorRole: string(author?["headline"]) ?? "知乎创作者", avatarColor: color(for: rawID), title: plainText(title), excerpt: excerpt.isEmpty ? "打开查看完整内容" : excerpt, topic: topic, upvotes: upvotes, isVoted: isVoted, comments: comments, hasImage: thumbnailURL != nil, imageColor: AppTheme.zhihuBlue.withAlphaComponent(0.08), avatarURL: avatarURL, thumbnailURL: thumbnailURL, contentID: Int64(rawID), questionID: questionID)
         }
         let paging = root["paging"] as? [String: Any]
         let nextURL = string(paging?["next"]).flatMap(URL.init(string:))
@@ -166,11 +167,19 @@ final class RemoteFeedRepository {
     }
 
     private static func imageURL(inHTML html: String) -> URL? {
-        let pattern = #"(?i)(?:src|data-src|data-original|data-actualsrc|data-lazy-src)\s*=\s*[\"']([^\"']+)[\"']"#
-        guard let expression = try? NSRegularExpression(pattern: pattern),
-              let match = expression.firstMatch(in: html, range: NSRange(html.startIndex..<html.endIndex, in: html)),
-              let range = Range(match.range(at: 1), in: html) else { return nil }
-        return ZhihuMediaURL.from(String(html[range]))
+        let range = NSRange(html.startIndex..<html.endIndex, in: html)
+        // Prefer the real lazy-loading source over a 1x1 data URI placeholder.
+        for attribute in ["data-actualsrc", "data-original", "data-src", "data-lazy-src", "src"] {
+            let pattern = #"(?i)\b"# + attribute + #"\s*=\s*[\"']([^\"']+)[\"']"#
+            guard let expression = try? NSRegularExpression(pattern: pattern) else { continue }
+            for match in expression.matches(in: html, range: range) {
+                guard let valueRange = Range(match.range(at: 1), in: html) else { continue }
+                if let url = ZhihuMediaURL.from(String(html[valueRange]).replacingOccurrences(of: "&amp;", with: "&")) {
+                    return url
+                }
+            }
+        }
+        return nil
     }
 
     private static func string(_ value: Any?) -> String? {
@@ -191,6 +200,16 @@ final class RemoteFeedRepository {
         if let value = value as? NSNumber { return value.boolValue }
         if let value = value as? String { return value == "true" || value == "1" }
         return nil
+    }
+
+    private static func isVoted(_ target: [String: Any]) -> Bool {
+        if let value = bool(target["is_voteup"] ?? target["isVoteup"] ?? target["is_voted"] ?? target["isVoted"]) {
+            return value
+        }
+        let relation = (target["reaction"] as? [String: Any])?["relation"] as? [String: Any]
+            ?? target["relationship"] as? [String: Any]
+        if int(relation?["voting"]) == 1 { return true }
+        return string(relation?["vote"])?.lowercased() == "up"
     }
 
     private static func plainText(_ value: String) -> String {
