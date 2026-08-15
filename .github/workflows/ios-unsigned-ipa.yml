@@ -1,5 +1,8 @@
 name: iOS Unsigned IPA
 
+permissions:
+  contents: write
+
 on:
   workflow_dispatch:
     inputs:
@@ -49,3 +52,13 @@ jobs:
           name: zhihu15-ipa
           path: build/*.ipa
           if-no-files-found: error
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event_name == 'workflow_dispatch' && format('v{0}', inputs.version) || github.ref_name }}
+          name: ${{ github.event_name == 'workflow_dispatch' && format('v{0}', inputs.version) || github.ref_name }}
+          target_commitish: ${{ github.sha }}
+          files: build/*.ipa
+          fail_on_unmatched_files: true
+          generate_release_notes: true
+          overwrite_files: true
