@@ -59,11 +59,19 @@ final class DetailViewController: UIViewController {
 
     private func setupScrollView() {
         scrollView.translatesAutoresizingMaskIntoConstraints = false
+        // This controller is used both as a normal UIKit push and as a
+        // UIViewControllerRepresentable inside SwiftUI NavigationLink. In
+        // the latter case UIKit's automatic scroll inset is applied on top
+        // of SwiftUI's safe area, producing the large blank band below the
+        // navigation bar. Manage the safe area explicitly instead.
+        scrollView.contentInsetAdjustmentBehavior = .never
+        scrollView.contentInset = .zero
+        scrollView.scrollIndicatorInsets = .zero
         view.addSubview(scrollView)
         NSLayoutConstraint.activate([
             scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            scrollView.topAnchor.constraint(equalTo: view.topAnchor),
+            scrollView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
             scrollView.bottomAnchor.constraint(equalTo: actionBar.topAnchor)
         ])
 
