@@ -52,7 +52,9 @@ final class RichContentView: UIView, WKNavigationDelegate {
     }
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-        updateHeight()
+        webView.evaluateJavaScript(RichContentHTML.linkifyScript) { [weak self] _, _ in
+            self?.updateHeight()
+        }
         // Images arrive after the document finishes. Two inexpensive passes
         // avoid the common blank/one-line body on slower iOS 15 devices.
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { [weak self] in self?.updateHeight() }
@@ -103,6 +105,50 @@ final class RichContentView: UIView, WKNavigationDelegate {
 }
 
 private enum RichContentHTML {
+    static let linkifyScript = """
+    (function() {
+        var urlPattern = /https?:\\/\\/[^\\s<]+/gi;
+        var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+        var nodes = [];
+        var current;
+        while (current = walker.nextNode()) {
+            var parent = current.parentElement;
+            if (!parent || !/https?:\\/\\//i.test(current.nodeValue || "")) { continue; }
+            if (parent.closest("a,code,pre,script,style")) { continue; }
+            nodes.push(current);
+        }
+        nodes.forEach(function(node) {
+            var text = node.nodeValue || "";
+            var fragment = document.createDocumentFragment();
+            var lastIndex = 0;
+            var match;
+            urlPattern.lastIndex = 0;
+            while ((match = urlPattern.exec(text)) !== null) {
+                var fullURL = match[0];
+                var cleanURL = fullURL.replace(/[.,!?;:，。！？；：、）》】）\\]}]+$/g, "");
+                if (!cleanURL) { continue; }
+                var matchEnd = match.index + fullURL.length;
+                if (match.index > lastIndex) {
+                    fragment.appendChild(document.createTextNode(text.slice(lastIndex, match.index)));
+                }
+                var link = document.createElement("a");
+                link.href = cleanURL;
+                link.textContent = cleanURL;
+                fragment.appendChild(link);
+                if (cleanURL.length < fullURL.length) {
+                    fragment.appendChild(document.createTextNode(fullURL.slice(cleanURL.length)));
+                }
+                lastIndex = matchEnd;
+            }
+            if (lastIndex === 0) { return; }
+            if (lastIndex < text.length) {
+                fragment.appendChild(document.createTextNode(text.slice(lastIndex)));
+            }
+            node.parentNode.replaceChild(fragment, node);
+        });
+    })();
+    """
+
     static func document(for source: String) -> String {
         let content = looksLikeHTML(source) ? sanitizeHTML(source) : markdownHTML(source)
         return """

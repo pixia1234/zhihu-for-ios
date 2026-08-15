@@ -44,6 +44,15 @@ final class DetailViewController: UIViewController {
         HandoffCoordinator.shared.start(item: item)
     }
 
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        // SwiftUI can reuse a navigation item when this controller is hosted
+        // by NavigationLink. Do not allow an old author ID/headline prompt to
+        // make the answer navigation bar taller.
+        navigationItem.prompt = nil
+        navigationItem.largeTitleDisplayMode = .never
+    }
+
     deinit {
         HandoffCoordinator.shared.stop()
     }

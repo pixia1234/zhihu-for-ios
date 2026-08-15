@@ -352,7 +352,10 @@ struct UIKitDetailScreen: UIViewControllerRepresentable {
         DetailViewController(item: item)
     }
 
-    func updateUIViewController(_ viewController: DetailViewController, context: Context) {}
+    func updateUIViewController(_ viewController: DetailViewController, context: Context) {
+        viewController.navigationItem.prompt = nil
+        viewController.navigationItem.largeTitleDisplayMode = .never
+    }
 }
 
 struct CachedRemoteImage: View {
