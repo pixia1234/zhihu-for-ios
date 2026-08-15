@@ -6,6 +6,7 @@ final class HomeViewController: UIViewController {
     private let headerSubtitle = UILabel()
     private let refreshControl = UIRefreshControl()
     private var items = SampleData.recommendations
+    private var locallyVotedItemIDs = Set<Int>()
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -183,7 +184,11 @@ final class HomeViewController: UIViewController {
                 }
             } else if item.kind == .answer, let answerID = item.contentID, answerID > 0 {
                 ZhihuActionRepository.shared.vote(answerID: answerID, up: true) { [weak self] result in
-                    self?.showActionResult(result, success: "已赞同")
+                    guard let self = self else { return }
+                    if case .success = result {
+                        self.markLocallyVoted(item)
+                    }
+                    self.showActionResult(result, success: "已赞同")
                 }
             } else {
                 showActionResult(.failure(ZhihuSessionError.malformedPayload), success: "")
@@ -198,6 +203,14 @@ final class HomeViewController: UIViewController {
             }
             present(share, animated: true)
         }
+    }
+
+    private func markLocallyVoted(_ item: FeedItem) {
+        guard !locallyVotedItemIDs.contains(item.id),
+              let index = items.firstIndex(where: { $0.id == item.id }) else { return }
+        locallyVotedItemIDs.insert(item.id)
+        items[index].upvotes += 1
+        tableView.reloadRows(at: [IndexPath(row: index, section: 0)], with: .none)
     }
 
     private func showActionResult(_ result: Result<Void, Error>, success: String) {

@@ -5,19 +5,19 @@ struct SwiftUIAppRootView: View {
     var body: some View {
         TabView {
             NavigationView { SwiftUIHomeView() }
-                .navigationViewStyle(DoubleColumnNavigationViewStyle())
+                .navigationViewStyle(StackNavigationViewStyle())
                 .tabItem { Label("首页", systemImage: "house") }
 
             NavigationView { SwiftUICollectionView() }
-                .navigationViewStyle(DoubleColumnNavigationViewStyle())
+                .navigationViewStyle(StackNavigationViewStyle())
                 .tabItem { Label("收藏", systemImage: "bookmark") }
 
             NavigationView { SwiftUIProfileView() }
-                .navigationViewStyle(DoubleColumnNavigationViewStyle())
+                .navigationViewStyle(StackNavigationViewStyle())
                 .tabItem { Label("我的", systemImage: "person.crop.circle") }
 
             NavigationView { SwiftUISearchView() }
-                .navigationViewStyle(DoubleColumnNavigationViewStyle())
+                .navigationViewStyle(StackNavigationViewStyle())
                 .tabItem { Label("搜索", systemImage: "magnifyingglass") }
         }
         .accentColor(Color(red: 0.08, green: 0.38, blue: 0.86))
@@ -29,6 +29,7 @@ final class SwiftUIFeedStore: ObservableObject {
     @Published private(set) var items: [FeedItem] = SampleData.recommendations
     @Published private(set) var isLoading = false
     @Published var errorMessage: String?
+    private var locallyVotedItemIDs = Set<Int>()
 
     func load(channel: HomeChannel? = nil) {
         let requested = channel ?? self.channel
@@ -63,6 +64,27 @@ final class SwiftUIFeedStore: ObservableObject {
             }
         }
     }
+
+    func vote(item: FeedItem, completion: @escaping (Result<Void, Error>) -> Void) {
+        guard item.kind != .question, let contentID = item.contentID, contentID > 0 else {
+            completion(.failure(ZhihuSessionError.malformedPayload))
+            return
+        }
+        guard !locallyVotedItemIDs.contains(item.id) else {
+            completion(.success(()))
+            return
+        }
+
+        ZhihuActionRepository.shared.vote(answerID: contentID, up: true) { [weak self] result in
+            guard let self = self else { return }
+            if case .success = result,
+               let index = self.items.firstIndex(where: { $0.id == item.id }) {
+                self.locallyVotedItemIDs.insert(item.id)
+                self.items[index].upvotes += 1
+            }
+            completion(result)
+        }
+    }
 }
 
 struct SwiftUIHomeView: View {
@@ -70,6 +92,8 @@ struct SwiftUIHomeView: View {
     @State private var detailRoute: SwiftUIDetailRoute?
     @State private var showMessages = false
     @State private var showCreation = false
+    @State private var showLogin = false
+    @State private var actionMessage: String?
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     var body: some View {
@@ -83,10 +107,25 @@ struct SwiftUIHomeView: View {
                     ProgressView("正在加载知乎内容").frame(maxWidth: .infinity).padding(.vertical, 40)
                 }
                 ForEach(store.items, id: \.id) { item in
-                    Button { detailRoute = SwiftUIDetailRoute(item: item) } label: {
-                        SwiftUIFeedCard(item: item)
-                    }
-                    .buttonStyle(.plain)
+                    SwiftUIFeedCard(
+                        item: item,
+                        onOpen: { detailRoute = SwiftUIDetailRoute(item: item) },
+                        onVote: {
+                            store.vote(item: item) { result in
+                                switch result {
+                                case .success:
+                                    actionMessage = "已赞同"
+                                case let .failure(error):
+                                    if let sessionError = error as? ZhihuSessionError,
+                                       case .authenticationRequired = sessionError {
+                                        showLogin = true
+                                    } else {
+                                        actionMessage = error.localizedDescription
+                                    }
+                                }
+                            }
+                        }
+                    )
                 }
                 if !store.isLoading && store.items.isEmpty && store.errorMessage == nil {
                     SwiftUIEmptyState(title: "暂时没有内容", systemImage: "tray")
@@ -117,6 +156,17 @@ struct SwiftUIHomeView: View {
         }
         .sheet(isPresented: $showCreation) {
             UIKitNavigationScreen { RichTextEditorViewController(mode: .pin) }
+        }
+        .sheet(isPresented: $showLogin) {
+            UIKitNavigationScreen { LoginViewController() }
+        }
+        .alert("知乎", isPresented: Binding(
+            get: { actionMessage != nil },
+            set: { if !$0 { actionMessage = nil } }
+        )) {
+            Button("好的", role: .cancel) { actionMessage = nil }
+        } message: {
+            Text(actionMessage ?? "")
         }
     }
 
@@ -149,6 +199,8 @@ struct SwiftUIHomeView: View {
 
 struct SwiftUIFeedCard: View {
     let item: FeedItem
+    var onOpen: (() -> Void)? = nil
+    var onVote: (() -> Void)? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -170,7 +222,14 @@ struct SwiftUIFeedCard: View {
                     .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
             }
             HStack(spacing: 16) {
-                Label(item.upvotes > 0 ? "\(item.upvotes)" : "赞同", systemImage: "arrow.up")
+                if let onVote = onVote {
+                    Button(action: onVote) {
+                        Label(item.upvotes > 0 ? "\(item.upvotes)" : "赞同", systemImage: "arrow.up")
+                    }
+                    .buttonStyle(.borderless)
+                } else {
+                    Label(item.upvotes > 0 ? "\(item.upvotes)" : "赞同", systemImage: "arrow.up")
+                }
                 Label(item.comments > 0 ? "\(item.comments)" : "评论", systemImage: "bubble.left")
                 Spacer()
                 Text(item.topic).font(.caption).foregroundColor(Color(red: 0.08, green: 0.38, blue: 0.86))
@@ -180,6 +239,8 @@ struct SwiftUIFeedCard: View {
         .padding(16)
         .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Color(uiColor: .separator).opacity(0.16)))
+        .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .onTapGesture { onOpen?() }
     }
 }
 

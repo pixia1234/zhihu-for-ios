@@ -16,8 +16,8 @@ struct FeedItem {
     let title: String
     let excerpt: String
     let topic: String
-    let upvotes: Int
-    let comments: Int
+    var upvotes: Int
+    var comments: Int
     let hasImage: Bool
     let imageColor: UIColor
     let avatarURL: URL?

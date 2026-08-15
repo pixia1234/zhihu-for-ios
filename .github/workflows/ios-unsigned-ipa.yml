@@ -10,6 +10,9 @@ on:
         description: Version, for example 1.0.0
         required: false
         default: 1.0.0
+      build_number:
+        description: Internal build number (defaults to the GitHub Actions run number)
+        required: false
   push:
     tags: ["v*.*.*"]
 
@@ -45,7 +48,28 @@ jobs:
           if [[ -z "$version" ]]; then
             version="${GITHUB_REF_NAME#v}"
           fi
-          ./scripts/build_unsigned_ipa.sh "$version"
+          build_number="${{ inputs.build_number }}"
+          if [[ -z "$build_number" ]]; then
+            build_number="$GITHUB_RUN_NUMBER"
+          fi
+          ./scripts/build_unsigned_ipa.sh "$version" "$build_number"
+      - name: Verify bundle versions
+        run: |
+          version="${{ inputs.version }}"
+          if [[ -z "$version" ]]; then
+            version="${GITHUB_REF_NAME#v}"
+          fi
+          build_number="${{ inputs.build_number }}"
+          if [[ -z "$build_number" ]]; then
+            build_number="$GITHUB_RUN_NUMBER"
+          fi
+          info_plist="build/Zhihu15.xcarchive/Products/Applications/Zhihu15.app/Info.plist"
+          actual_version=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$info_plist")
+          actual_build=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$info_plist")
+          test "$actual_version" = "$version"
+          test "$actual_build" = "$build_number"
+          echo "CFBundleShortVersionString=$actual_version"
+          echo "CFBundleVersion=$actual_build"
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:

@@ -8,9 +8,13 @@ final class DetailViewController: UIViewController {
     private let richContentView = RichContentView()
     private let primaryActionButton = UIButton(type: .system)
     private var canonicalURL: URL?
+    private var displayedUpvotes: Int
+    private var hasVoted = false
+    private var isVoting = false
 
     init(item: FeedItem) {
         self.item = item
+        self.displayedUpvotes = item.upvotes
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -145,7 +149,7 @@ final class DetailViewController: UIViewController {
         actions.axis = .horizontal
         actions.spacing = 10
         actions.distribution = .fillEqually
-        primaryActionButton.setTitle(item.kind == .question ? "关注问题" : "\(item.upvotes > 0 ? item.upvotes : 0) 赞同", for: .normal)
+        updatePrimaryActionTitle()
         primaryActionButton.setImage(UIImage(systemName: item.kind == .question ? "person.badge.plus" : "arrow.up"), for: .normal)
         primaryActionButton.tintColor = AppTheme.zhihuBlue
         primaryActionButton.setTitleColor(AppTheme.zhihuBlue, for: .normal)
@@ -230,11 +234,33 @@ final class DetailViewController: UIViewController {
             ZhihuActionRepository.shared.follow(questionID: questionID, following: true) { [weak self] result in
                 self?.showActionResult(result, success: "已关注这个问题")
             }
-        } else if let contentID = item.contentID {
+        } else if let contentID = item.contentID, contentID > 0 {
+            guard !isVoting, !hasVoted else { return }
+            isVoting = true
+            primaryActionButton.isEnabled = false
             ZhihuActionRepository.shared.vote(answerID: contentID, up: true) { [weak self] result in
-                self?.showActionResult(result, success: "已赞同")
+                guard let self = self else { return }
+                self.isVoting = false
+                if case .success = result {
+                    self.hasVoted = true
+                    self.displayedUpvotes += 1
+                    self.updatePrimaryActionTitle()
+                }
+                self.primaryActionButton.isEnabled = !self.hasVoted
+                self.showActionResult(result, success: "已赞同")
             }
+        } else {
+            showActionResult(.failure(ZhihuSessionError.malformedPayload), success: "")
         }
+    }
+
+    private func updatePrimaryActionTitle() {
+        guard item.kind != .question else {
+            primaryActionButton.setTitle("关注问题", for: .normal)
+            return
+        }
+        let title = displayedUpvotes > 0 ? "\(displayedUpvotes) 赞同" : "赞同"
+        primaryActionButton.setTitle(title, for: .normal)
     }
 
     @objc private func openCollectionPicker() {

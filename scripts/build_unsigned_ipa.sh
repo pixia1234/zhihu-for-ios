@@ -8,6 +8,7 @@ BUILD_DIR="build"
 ARCHIVE_PATH="$BUILD_DIR/$APP_NAME.xcarchive"
 PAYLOAD_DIR="$BUILD_DIR/Payload"
 VERSION="${1:-1.0.0}"
+BUILD_NUMBER="${2:-1}"
 OUT_IPA="zhihu15-${VERSION}.ipa"
 
 mkdir -p "$BUILD_DIR"
@@ -48,8 +49,9 @@ xcodebuild \
   CODE_SIGNING_REQUIRED=NO \
   CODE_SIGN_IDENTITY="" \
   MARKETING_VERSION="$VERSION" \
-  CURRENT_PROJECT_VERSION=1 \
+  CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
   INFOPLIST_KEY_CFBundleShortVersionString="$VERSION" \
+  INFOPLIST_KEY_CFBundleVersion="$BUILD_NUMBER" \
   archive
 
 echo "[3/4] copy app into Payload"
