@@ -12,6 +12,7 @@ final class DetailViewController: UIViewController {
     private let managesNavigationBar: Bool
     private var collectionActionButton: UIButton?
     private var actionBarBottomConstraint: NSLayoutConstraint?
+    private var actionBarHeightConstraint: NSLayoutConstraint?
     private var canonicalURL: URL?
     private var displayedUpvotes: Int
     private var hasVoted = false
@@ -160,10 +161,12 @@ final class DetailViewController: UIViewController {
         actionBar.clipsToBounds = true
         view.addSubview(actionBar)
         actionBarBottomConstraint = actionBar.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+        actionBarHeightConstraint = actionBar.heightAnchor.constraint(equalToConstant: 56)
         NSLayoutConstraint.activate([
             actionBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             actionBar.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            actionBarBottomConstraint!
+            actionBarBottomConstraint!,
+            actionBarHeightConstraint!
         ])
 
         actionsStack.axis = .horizontal
@@ -174,8 +177,8 @@ final class DetailViewController: UIViewController {
         NSLayoutConstraint.activate([
             actionsStack.leadingAnchor.constraint(equalTo: actionBar.contentView.leadingAnchor, constant: 16),
             actionsStack.trailingAnchor.constraint(equalTo: actionBar.contentView.trailingAnchor, constant: -16),
-            actionsStack.topAnchor.constraint(equalTo: actionBar.contentView.topAnchor, constant: 10),
-            actionsStack.bottomAnchor.constraint(equalTo: actionBar.contentView.bottomAnchor, constant: -10)
+            actionsStack.topAnchor.constraint(equalTo: actionBar.contentView.topAnchor, constant: 6),
+            actionsStack.bottomAnchor.constraint(equalTo: actionBar.contentView.bottomAnchor, constant: -6)
         ])
 
         updatePrimaryActionTitle()
@@ -185,7 +188,7 @@ final class DetailViewController: UIViewController {
         primaryActionButton.titleLabel?.font = .systemFont(ofSize: 14, weight: .medium)
         primaryActionButton.backgroundColor = AppTheme.zhihuBlue.withAlphaComponent(0.08)
         primaryActionButton.layer.cornerRadius = 9
-        primaryActionButton.contentEdgeInsets = UIEdgeInsets(top: 11, left: 4, bottom: 11, right: 4)
+        primaryActionButton.contentEdgeInsets = UIEdgeInsets(top: 7, left: 4, bottom: 7, right: 4)
         primaryActionButton.addTarget(self, action: #selector(primaryAction), for: .touchUpInside)
         actionsStack.addArrangedSubview(primaryActionButton)
         let commentsButton = actionButton(title: "\(max(0, item.comments))", image: "bubble.left")
@@ -562,7 +565,7 @@ final class DetailViewController: UIViewController {
         button.titleLabel?.font = .systemFont(ofSize: 14, weight: .medium)
         button.backgroundColor = AppTheme.zhihuBlue.withAlphaComponent(0.08)
         button.layer.cornerRadius = 9
-        button.contentEdgeInsets = UIEdgeInsets(top: 11, left: 4, bottom: 11, right: 4)
+        button.contentEdgeInsets = UIEdgeInsets(top: 7, left: 4, bottom: 7, right: 4)
         return button
     }
 }
