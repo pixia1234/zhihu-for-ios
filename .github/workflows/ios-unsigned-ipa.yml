@@ -37,7 +37,12 @@ jobs:
           # The hosted image currently ships with an iOS 17.x SDK. The app
           # remains iOS 15-compatible through its deployment target.
           REQUIRE_IOS15_SDK: "0"
-        run: ./scripts/build_unsigned_ipa.sh "${{ inputs.version || '1.0.0' }}"
+        run: |
+          version="${{ inputs.version }}"
+          if [[ -z "$version" ]]; then
+            version="${GITHUB_REF_NAME#v}"
+          fi
+          ./scripts/build_unsigned_ipa.sh "$version"
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
