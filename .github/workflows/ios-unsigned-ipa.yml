@@ -1,0 +1,40 @@
+name: iOS Unsigned IPA
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version, for example 1.0.0
+        required: false
+        default: 1.0.0
+  push:
+    tags: ["v*.*.*"]
+
+jobs:
+  build:
+    # macos-13 was retired from GitHub-hosted runners. Xcode 15.4 is the
+    # oldest currently available Xcode on macos-14 and can still target iOS 15.
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: 15.4
+      - name: Verify build environment
+        run: |
+          xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-version
+          test "$(xcodebuild -project Zhihu15.xcodeproj -scheme Zhihu15 -showBuildSettings | awk -F ' = ' '/IPHONEOS_DEPLOYMENT_TARGET/ {print $2; exit}')" = "15.0"
+      - name: Build unsigned IPA
+        env:
+          # The hosted image currently ships with an iOS 17.x SDK. The app
+          # remains iOS 15-compatible through its deployment target.
+          REQUIRE_IOS15_SDK: "0"
+        run: ./scripts/build_unsigned_ipa.sh "${{ inputs.version || '1.0.0' }}"
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: zhihu15-ipa
+          path: build/*.ipa
+          if-no-files-found: error

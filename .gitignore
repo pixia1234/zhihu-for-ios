@@ -1,0 +1,23 @@
+# Xcode
+build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+*.moved-aside
+
+# Swift Package Manager / local tooling
+.build/
+Packages/
+
+# macOS
+.DS_Store
+
+# Local signing and secrets
+*.p12
+*.mobileprovision
+*.cer
+*.pem
+*.env
+
+# XcodeGen generated user-specific files
+*.xcodeproj/xcuserdata/

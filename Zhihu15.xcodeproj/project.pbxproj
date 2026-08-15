@@ -1,0 +1,357 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 55;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		A10000010000000000000001 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000001 /* AppDelegate.swift */; };
+		A10000010000000000000002 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000002 /* SceneDelegate.swift */; };
+		A10000010000000000000003 /* AppTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000003 /* AppTheme.swift */; };
+		A10000010000000000000004 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000004 /* Models.swift */; };
+		A10000010000000000000005 /* SampleData.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000005 /* SampleData.swift */; };
+		A10000010000000000000006 /* MainTabBarController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000006 /* MainTabBarController.swift */; };
+		A10000010000000000000007 /* HomeViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000007 /* HomeViewController.swift */; };
+		A10000010000000000000008 /* FeedCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000008 /* FeedCell.swift */; };
+		A10000010000000000000009 /* DetailViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000009 /* DetailViewController.swift */; };
+		A1000001000000000000000A /* HotListViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000001000000000000000A /* HotListViewController.swift */; };
+		A1000001000000000000000B /* SearchViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000001000000000000000B /* SearchViewController.swift */; };
+		A1000001000000000000000C /* CollectionsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000001000000000000000C /* CollectionsViewController.swift */; };
+		A1000001000000000000000D /* MessagesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000001000000000000000D /* MessagesViewController.swift */; };
+		A1000001000000000000000E /* ProfileViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000001000000000000000E /* ProfileViewController.swift */; };
+		A10000010000000000000010 /* ZhihuSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000011 /* ZhihuSession.swift */; };
+		A10000010000000000000011 /* ImagePipeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000012 /* ImagePipeline.swift */; };
+		A10000010000000000000012 /* RemoteFeedRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000013 /* RemoteFeedRepository.swift */; };
+		A10000010000000000000013 /* RemoteContentRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000014 /* RemoteContentRepository.swift */; };
+		A10000010000000000000014 /* LoginViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000015 /* LoginViewController.swift */; };
+		A10000010000000000000015 /* RemoteLibraryRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000016 /* RemoteLibraryRepository.swift */; };
+		A10000010000000000000016 /* RemoteNotificationRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000017 /* RemoteNotificationRepository.swift */; };
+		A10000010000000000000017 /* ZhihuActionRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000018 /* ZhihuActionRepository.swift */; };
+		A10000010000000000000018 /* CommentsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000019 /* CommentsViewController.swift */; };
+		A10000010000000000000019 /* WebContentViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000001000000000000001A /* WebContentViewController.swift */; };
+		A1000001000000000000001A /* HistoryViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000001000000000000001B /* HistoryViewController.swift */; };
+		A1000001000000000000001B /* CookieUtilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000001000000000000001C /* CookieUtilities.swift */; };
+		A1000001000000000000001C /* QRLoginViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000001000000000000001D /* QRLoginViewController.swift */; };
+		A1000001000000000000001D /* RiskControlViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000001000000000000001E /* RiskControlViewController.swift */; };
+		A1000001000000000000001E /* VideoPlaybackViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000001000000000000001F /* VideoPlaybackViewController.swift */; };
+		A1000001000000000000001F /* CreationRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000020 /* CreationRepository.swift */; };
+		A10000010000000000000020 /* RichTextEditorViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000021 /* RichTextEditorViewController.swift */; };
+		A10000010000000000000021 /* AppLock.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000022 /* AppLock.swift */; };
+		A10000010000000000000022 /* AccountListViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000023 /* AccountListViewController.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		B10000010000000000000001 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		B10000010000000000000002 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
+		B10000010000000000000003 /* AppTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTheme.swift; sourceTree = "<group>"; };
+		B10000010000000000000004 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		B10000010000000000000005 /* SampleData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleData.swift; sourceTree = "<group>"; };
+		B10000010000000000000006 /* MainTabBarController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabBarController.swift; sourceTree = "<group>"; };
+		B10000010000000000000007 /* HomeViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeViewController.swift; sourceTree = "<group>"; };
+		B10000010000000000000008 /* FeedCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedCell.swift; sourceTree = "<group>"; };
+		B10000010000000000000009 /* DetailViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailViewController.swift; sourceTree = "<group>"; };
+		B1000001000000000000000A /* HotListViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotListViewController.swift; sourceTree = "<group>"; };
+		B1000001000000000000000B /* SearchViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchViewController.swift; sourceTree = "<group>"; };
+		B1000001000000000000000C /* CollectionsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectionsViewController.swift; sourceTree = "<group>"; };
+		B1000001000000000000000D /* MessagesViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessagesViewController.swift; sourceTree = "<group>"; };
+		B1000001000000000000000E /* ProfileViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileViewController.swift; sourceTree = "<group>"; };
+		B1000001000000000000000F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		B10000010000000000000010 /* Zhihu15.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Zhihu15.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B10000010000000000000011 /* ZhihuSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZhihuSession.swift; sourceTree = "<group>"; };
+		B10000010000000000000012 /* ImagePipeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImagePipeline.swift; sourceTree = "<group>"; };
+		B10000010000000000000013 /* RemoteFeedRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteFeedRepository.swift; sourceTree = "<group>"; };
+		B10000010000000000000014 /* RemoteContentRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteContentRepository.swift; sourceTree = "<group>"; };
+		B10000010000000000000015 /* LoginViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginViewController.swift; sourceTree = "<group>"; };
+		B10000010000000000000016 /* RemoteLibraryRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteLibraryRepository.swift; sourceTree = "<group>"; };
+		B10000010000000000000017 /* RemoteNotificationRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteNotificationRepository.swift; sourceTree = "<group>"; };
+		B10000010000000000000018 /* ZhihuActionRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZhihuActionRepository.swift; sourceTree = "<group>"; };
+		B10000010000000000000019 /* CommentsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommentsViewController.swift; sourceTree = "<group>"; };
+		B1000001000000000000001A /* WebContentViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebContentViewController.swift; sourceTree = "<group>"; };
+		B1000001000000000000001B /* HistoryViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryViewController.swift; sourceTree = "<group>"; };
+		B1000001000000000000001C /* CookieUtilities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CookieUtilities.swift; sourceTree = "<group>"; };
+		B1000001000000000000001D /* QRLoginViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRLoginViewController.swift; sourceTree = "<group>"; };
+		B1000001000000000000001E /* RiskControlViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RiskControlViewController.swift; sourceTree = "<group>"; };
+		B1000001000000000000001F /* VideoPlaybackViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoPlaybackViewController.swift; sourceTree = "<group>"; };
+		B10000010000000000000020 /* CreationRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreationRepository.swift; sourceTree = "<group>"; };
+		B10000010000000000000021 /* RichTextEditorViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichTextEditorViewController.swift; sourceTree = "<group>"; };
+		B10000010000000000000022 /* AppLock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLock.swift; sourceTree = "<group>"; };
+		B10000010000000000000023 /* AccountListViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountListViewController.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		C10000010000000000000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		D10000010000000000000001 = {
+			isa = PBXGroup;
+			children = (
+				D10000010000000000000002 /* Zhihu15 */,
+				D10000010000000000000003 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		D10000010000000000000002 /* Zhihu15 */ = {
+			isa = PBXGroup;
+			children = (
+				B10000010000000000000001 /* AppDelegate.swift */,
+				B10000010000000000000002 /* SceneDelegate.swift */,
+				B10000010000000000000003 /* AppTheme.swift */,
+				B10000010000000000000004 /* Models.swift */,
+				B10000010000000000000005 /* SampleData.swift */,
+				B10000010000000000000006 /* MainTabBarController.swift */,
+				B10000010000000000000007 /* HomeViewController.swift */,
+				B10000010000000000000008 /* FeedCell.swift */,
+				B10000010000000000000009 /* DetailViewController.swift */,
+				B1000001000000000000000A /* HotListViewController.swift */,
+				B1000001000000000000000B /* SearchViewController.swift */,
+				B1000001000000000000000C /* CollectionsViewController.swift */,
+				B1000001000000000000000D /* MessagesViewController.swift */,
+				B1000001000000000000000E /* ProfileViewController.swift */,
+				B1000001000000000000000F /* Info.plist */,
+				B10000010000000000000011 /* ZhihuSession.swift */,
+				B10000010000000000000012 /* ImagePipeline.swift */,
+				B10000010000000000000013 /* RemoteFeedRepository.swift */,
+				B10000010000000000000014 /* RemoteContentRepository.swift */,
+				B10000010000000000000015 /* LoginViewController.swift */,
+				B10000010000000000000016 /* RemoteLibraryRepository.swift */,
+				B10000010000000000000017 /* RemoteNotificationRepository.swift */,
+				B10000010000000000000018 /* ZhihuActionRepository.swift */,
+				B10000010000000000000019 /* CommentsViewController.swift */,
+				B1000001000000000000001A /* WebContentViewController.swift */,
+				B1000001000000000000001B /* HistoryViewController.swift */,
+				B1000001000000000000001C /* CookieUtilities.swift */,
+				B1000001000000000000001D /* QRLoginViewController.swift */,
+				B1000001000000000000001E /* RiskControlViewController.swift */,
+				B1000001000000000000001F /* VideoPlaybackViewController.swift */,
+				B10000010000000000000020 /* CreationRepository.swift */,
+				B10000010000000000000021 /* RichTextEditorViewController.swift */,
+				B10000010000000000000022 /* AppLock.swift */,
+				B10000010000000000000023 /* AccountListViewController.swift */,
+			);
+			path = Zhihu15;
+			sourceTree = "<group>";
+		};
+		D10000010000000000000003 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				B10000010000000000000010 /* Zhihu15.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		E10000010000000000000001 /* Zhihu15 */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = E10000010000000000000003 /* Build configuration list for PBXNativeTarget "Zhihu15" */;
+			buildPhases = (
+				E10000010000000000000004 /* Sources */,
+				C10000010000000000000001 /* Frameworks */,
+				E10000010000000000000005 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Zhihu15;
+			productName = Zhihu15;
+			productReference = B10000010000000000000010 /* Zhihu15.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		E10000010000000000000002 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastSwiftUpdateCheck = 1300;
+				LastUpgradeCheck = 1300;
+				TargetAttributes = {
+					E10000010000000000000001 = {
+						CreatedOnToolsVersion = 13.0;
+					};
+				};
+			};
+			buildConfigurationList = E10000010000000000000006 /* Build configuration list for PBXProject "Zhihu15" */;
+			compatibilityVersion = "Xcode 13.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+				zh-Hans,
+			);
+			mainGroup = D10000010000000000000001;
+			productRefGroup = D10000010000000000000003 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				E10000010000000000000001 /* Zhihu15 */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		E10000010000000000000005 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		E10000010000000000000004 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A10000010000000000000001 /* AppDelegate.swift in Sources */,
+				A10000010000000000000002 /* SceneDelegate.swift in Sources */,
+				A10000010000000000000003 /* AppTheme.swift in Sources */,
+				A10000010000000000000004 /* Models.swift in Sources */,
+				A10000010000000000000005 /* SampleData.swift in Sources */,
+				A10000010000000000000006 /* MainTabBarController.swift in Sources */,
+				A10000010000000000000007 /* HomeViewController.swift in Sources */,
+				A10000010000000000000008 /* FeedCell.swift in Sources */,
+				A10000010000000000000009 /* DetailViewController.swift in Sources */,
+				A1000001000000000000000A /* HotListViewController.swift in Sources */,
+				A1000001000000000000000B /* SearchViewController.swift in Sources */,
+				A1000001000000000000000C /* CollectionsViewController.swift in Sources */,
+				A1000001000000000000000D /* MessagesViewController.swift in Sources */,
+				A1000001000000000000000E /* ProfileViewController.swift in Sources */,
+				A10000010000000000000010 /* ZhihuSession.swift in Sources */,
+				A10000010000000000000011 /* ImagePipeline.swift in Sources */,
+				A10000010000000000000012 /* RemoteFeedRepository.swift in Sources */,
+				A10000010000000000000013 /* RemoteContentRepository.swift in Sources */,
+				A10000010000000000000014 /* LoginViewController.swift in Sources */,
+				A10000010000000000000015 /* RemoteLibraryRepository.swift in Sources */,
+				A10000010000000000000016 /* RemoteNotificationRepository.swift in Sources */,
+				A10000010000000000000017 /* ZhihuActionRepository.swift in Sources */,
+				A10000010000000000000018 /* CommentsViewController.swift in Sources */,
+				A10000010000000000000019 /* WebContentViewController.swift in Sources */,
+				A1000001000000000000001A /* HistoryViewController.swift in Sources */,
+				A1000001000000000000001B /* CookieUtilities.swift in Sources */,
+				A1000001000000000000001C /* QRLoginViewController.swift in Sources */,
+				A1000001000000000000001D /* RiskControlViewController.swift in Sources */,
+				A1000001000000000000001E /* VideoPlaybackViewController.swift in Sources */,
+				A1000001000000000000001F /* CreationRepository.swift in Sources */,
+				A10000010000000000000020 /* RichTextEditorViewController.swift in Sources */,
+				A10000010000000000000021 /* AppLock.swift in Sources */,
+				A10000010000000000000022 /* AccountListViewController.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		F10000010000000000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = "";
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				INFOPLIST_FILE = Zhihu15/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.zhihu15;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		F10000010000000000000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = "";
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				INFOPLIST_FILE = Zhihu15/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.zhihu15;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		F10000010000000000000003 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				INFOPLIST_FILE = Zhihu15/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.zhihu15;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		F10000010000000000000004 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				INFOPLIST_FILE = Zhihu15/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.zhihu15;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		E10000010000000000000003 /* Build configuration list for PBXNativeTarget "Zhihu15" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F10000010000000000000001 /* Debug */,
+				F10000010000000000000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		E10000010000000000000006 /* Build configuration list for PBXProject "Zhihu15" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F10000010000000000000003 /* Debug */,
+				F10000010000000000000004 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = E10000010000000000000002 /* Project object */;
+}
