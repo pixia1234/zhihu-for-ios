@@ -27,7 +27,7 @@ final class QuestionAnswersRepository {
             components.queryItems = [
                 URLQueryItem(name: "limit", value: "20"),
                 URLQueryItem(name: "order_by", value: "default"),
-                URLQueryItem(name: "include", value: "data[*].target.content,data[*].target.author,data[*].target.question,data[*].target.voteup_count,data[*].target.comment_count,data[*].target.relationship,data[*].target.reaction")
+                URLQueryItem(name: "include", value: "data[*].target.content,data[*].target.author,data[*].target.question,data[*].target.voteup_count,data[*].target.favlists_count,data[*].target.comment_count,data[*].target.relationship,data[*].target.reaction")
             ]
             url = components.url!
         }
@@ -54,6 +54,8 @@ final class QuestionAnswersRepository {
                             hasImage: item.hasImage,
                             imageColor: item.imageColor,
                             isVoted: item.isVoted,
+                            favoriteCount: item.favoriteCount,
+                            isFavorited: item.isFavorited,
                             avatarURL: item.avatarURL,
                             thumbnailURL: item.thumbnailURL,
                             contentID: item.contentID,

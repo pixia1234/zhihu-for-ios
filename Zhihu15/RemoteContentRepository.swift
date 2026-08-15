@@ -10,6 +10,8 @@ struct RemoteContent {
     let canonicalURL: URL?
     let upvoteCount: Int?
     let isVoted: Bool?
+    let favoriteCount: Int?
+    let isFavorited: Bool?
 }
 
 final class RemoteContentRepository {
@@ -26,13 +28,13 @@ final class RemoteContentRepository {
         let url: URL
         switch item.kind {
         case .answer:
-            url = URL(string: "https://www.zhihu.com/api/v4/answers/\(contentID)?include=content,author,question,voteup_count,comment_count,relationship,reaction")!
+            url = URL(string: "https://www.zhihu.com/api/v4/answers/\(contentID)?include=content,author,question,voteup_count,favlists_count,comment_count,relationship,reaction")!
         case .question:
             url = URL(string: "https://www.zhihu.com/api/v4/questions/\(contentID)?include=detail,author,answer_count,follower_count")!
         case .article:
             url = URL(string: "https://zhuanlan.zhihu.com/api/articles/\(contentID)")!
         case .video:
-            completion(.success(RemoteContent(title: item.title, body: item.excerpt, bodyHTML: item.excerpt, author: item.author, authorHeadline: item.authorRole, imageURL: item.thumbnailURL, canonicalURL: Self.canonicalURLForDisplay(item), upvoteCount: item.upvotes, isVoted: item.isVoted)))
+            completion(.success(RemoteContent(title: item.title, body: item.excerpt, bodyHTML: item.excerpt, author: item.author, authorHeadline: item.authorRole, imageURL: item.thumbnailURL, canonicalURL: Self.canonicalURLForDisplay(item), upvoteCount: item.upvotes, isVoted: item.isVoted, favoriteCount: item.favoriteCount, isFavorited: item.isFavorited)))
             return
         }
         client.request(url, requiresLogin: false) { result in
@@ -61,10 +63,26 @@ final class RemoteContentRepository {
         let relation = (root["reaction"] as? [String: Any])?["relation"] as? [String: Any] ?? root["relationship"] as? [String: Any]
         let isVoted: Bool? = relation == nil ? nil : ((relation?["voting"] as? NSNumber)?.intValue == 1 || string(relation?["vote"])?.lowercased() == "up")
         let upvoteCount = (root["voteup_count"] as? NSNumber)?.intValue ?? fallback.upvotes
-        return RemoteContent(title: plainText(title), body: body, bodyHTML: bodyHTML, author: authorName, authorHeadline: headline, imageURL: image, canonicalURL: canonicalURL, upvoteCount: upvoteCount, isVoted: isVoted)
+        let favoriteCount = int(root["favlists_count"]) ?? int(root["favorite_count"]) ?? fallback.favoriteCount
+        let isFavorited = bool(relation?["is_favorited"] ?? relation?["isFavorited"])
+        return RemoteContent(title: plainText(title), body: body, bodyHTML: bodyHTML, author: authorName, authorHeadline: headline, imageURL: image, canonicalURL: canonicalURL, upvoteCount: upvoteCount, isVoted: isVoted, favoriteCount: favoriteCount, isFavorited: isFavorited)
     }
 
     private static func string(_ value: Any?) -> String? { value as? String }
+
+    private static func int(_ value: Any?) -> Int? {
+        if let value = value as? Int { return value }
+        if let value = value as? NSNumber { return value.intValue }
+        if let value = value as? String { return Int(value) }
+        return nil
+    }
+
+    private static func bool(_ value: Any?) -> Bool? {
+        if let value = value as? Bool { return value }
+        if let value = value as? NSNumber { return value.boolValue }
+        if let value = value as? String { return value == "true" || value == "1" }
+        return nil
+    }
 
     private static func plainText(_ html: String) -> String {
         guard html.contains("<"), let data = html.data(using: .utf8), let attributed = try? NSAttributedString(data: data, options: [.documentType: NSAttributedString.DocumentType.html, .characterEncoding: String.Encoding.utf8.rawValue], documentAttributes: nil) else { return html.trimmingCharacters(in: .whitespacesAndNewlines) }

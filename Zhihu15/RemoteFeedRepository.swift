@@ -118,10 +118,12 @@ final class RemoteFeedRepository {
             let topic = string((target["topic"] as? [String: Any])?["name"]) ?? (kind == .article ? "文章" : kind == .video ? "视频" : "问题")
             let upvotes = int(target["voteup_count"]) ?? int(target["vote_count"]) ?? int(target["like_count"]) ?? 0
             let isVoted = Self.isVoted(target)
+            let favoriteCount = int(target["favlists_count"]) ?? int(target["favorite_count"]) ?? 0
+            let isFavorited = Self.isFavorited(target)
             let comments = int(target["comment_count"]) ?? 0
             let questionID = (int(question?["id"]) ?? int(target["question_id"]) ?? int(entry["question_id"])).map(Int64.init)
             let fallbackID = Int(UInt64(rawID.hashValue.magnitude) % UInt64(Int.max))
-            return FeedItem(id: Int(rawID) ?? fallbackID, kind: kind, author: authorName, authorRole: string(author?["headline"]) ?? "知乎创作者", avatarColor: color(for: rawID), title: plainText(title), excerpt: excerpt.isEmpty ? "打开查看完整内容" : excerpt, topic: topic, upvotes: upvotes, comments: comments, hasImage: thumbnailURL != nil, imageColor: AppTheme.zhihuBlue.withAlphaComponent(0.08), isVoted: isVoted, avatarURL: avatarURL, thumbnailURL: thumbnailURL, contentID: Int64(rawID), questionID: questionID)
+            return FeedItem(id: Int(rawID) ?? fallbackID, kind: kind, author: authorName, authorRole: string(author?["headline"]) ?? "知乎创作者", avatarColor: color(for: rawID), title: plainText(title), excerpt: excerpt.isEmpty ? "打开查看完整内容" : excerpt, topic: topic, upvotes: upvotes, comments: comments, hasImage: thumbnailURL != nil, imageColor: AppTheme.zhihuBlue.withAlphaComponent(0.08), isVoted: isVoted, favoriteCount: favoriteCount, isFavorited: isFavorited, avatarURL: avatarURL, thumbnailURL: thumbnailURL, contentID: Int64(rawID), questionID: questionID)
         }
         let paging = root["paging"] as? [String: Any]
         let nextURL = string(paging?["next"]).flatMap(URL.init(string:))
@@ -210,6 +212,12 @@ final class RemoteFeedRepository {
             ?? target["relationship"] as? [String: Any]
         if int(relation?["voting"]) == 1 { return true }
         return string(relation?["vote"])?.lowercased() == "up"
+    }
+
+    private static func isFavorited(_ target: [String: Any]) -> Bool {
+        let relation = (target["reaction"] as? [String: Any])?["relation"] as? [String: Any]
+            ?? target["relationship"] as? [String: Any]
+        return bool(relation?["is_favorited"] ?? relation?["isFavorited"]) ?? false
     }
 
     private static func plainText(_ value: String) -> String {

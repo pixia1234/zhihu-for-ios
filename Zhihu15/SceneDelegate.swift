@@ -16,6 +16,7 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         window.rootViewController = UIHostingController(rootView: SwiftUIAppRootView())
         self.window = window
         window.makeKeyAndVisible()
+        applyTabBarAppearance()
         if let activity = connectionOptions.userActivities.first {
             DispatchQueue.main.async {
                 HandoffCoordinator.shared.handle(activity)
@@ -29,6 +30,7 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     func sceneDidBecomeActive(_ scene: UIScene) {
         guard let window = window else { return }
+        applyTabBarAppearance()
         DispatchQueue.main.async {
             AppLockCoordinator.shared.presentIfNeeded(in: window)
         }
@@ -36,7 +38,20 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         // after sceneDidBecomeActive. Retry once after the presentation
         // context is ready; AppLockCoordinator's state guards prevent a loop.
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+            AppTheme.configureTabBars(in: window.rootViewController)
             AppLockCoordinator.shared.presentIfNeeded(in: window)
+        }
+    }
+
+    private func applyTabBarAppearance() {
+        guard let window else { return }
+        AppTheme.configureTabBars(in: window.rootViewController)
+        // SwiftUI may finish installing its TabView after the first layout.
+        DispatchQueue.main.async {
+            AppTheme.configureTabBars(in: window.rootViewController)
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+            AppTheme.configureTabBars(in: window.rootViewController)
         }
     }
 

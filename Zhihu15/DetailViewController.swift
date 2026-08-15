@@ -14,7 +14,11 @@ final class DetailViewController: UIViewController {
     private var canonicalURL: URL?
     private var displayedUpvotes: Int
     private var hasVoted = false
+    private var displayedFavoriteCount: Int
+    private var hasLoadedFavoriteCount = false
+    private var isFavorited = false
     private var isVoting = false
+    private var isLoadingCollectionState = false
     private var didHideTabBar = false
 
     init(item: FeedItem, managesNavigationBar: Bool = false) {
@@ -22,6 +26,9 @@ final class DetailViewController: UIViewController {
         self.managesNavigationBar = managesNavigationBar
         self.displayedUpvotes = item.upvotes
         self.hasVoted = item.isVoted
+        self.displayedFavoriteCount = item.favoriteCount
+        self.hasLoadedFavoriteCount = item.favoriteCount > 0
+        self.isFavorited = item.isFavorited
         super.init(nibName: nil, bundle: nil)
         hidesBottomBarWhenPushed = true
     }
@@ -46,6 +53,7 @@ final class DetailViewController: UIViewController {
         super.viewDidAppear(animated)
         BrowsingHistoryStore.shared.record(item)
         HandoffCoordinator.shared.start(item: item)
+        loadCollectionState()
     }
 
     override func viewWillAppear(_ animated: Bool) {
@@ -168,8 +176,16 @@ final class DetailViewController: UIViewController {
         commentsButton.addTarget(self, action: #selector(openComments), for: .touchUpInside)
         actionsStack.addArrangedSubview(commentsButton)
         let collectionButton = actionButton(title: "", image: "bookmark")
-        collectionButton.setTitle("0", for: .normal)
-        collectionButton.accessibilityLabel = "收藏"
+        let loggedIn = ZhihuAccountStore.shared.load()?.isLoggedIn == true
+        let initialFavoriteTitle: String
+        if hasLoadedFavoriteCount || !loggedIn {
+            initialFavoriteTitle = "\(max(0, displayedFavoriteCount))"
+        } else {
+            initialFavoriteTitle = "…"
+        }
+        collectionButton.setTitle(initialFavoriteTitle, for: .normal)
+        collectionButton.setImage(UIImage(systemName: isFavorited ? "bookmark.fill" : "bookmark"), for: .normal)
+        collectionButton.accessibilityLabel = loggedIn ? "收藏夹数量加载中" : "收藏，未登录"
         collectionButton.addTarget(self, action: #selector(openCollectionPicker), for: .touchUpInside)
         collectionActionButton = collectionButton
         actionsStack.addArrangedSubview(collectionButton)
@@ -319,7 +335,13 @@ final class DetailViewController: UIViewController {
                 self.titleLabel.text = content.title
                 if let upvoteCount = content.upvoteCount { self.displayedUpvotes = upvoteCount }
                 if let isVoted = content.isVoted { self.hasVoted = isVoted }
+                if let favoriteCount = content.favoriteCount {
+                    self.displayedFavoriteCount = max(0, favoriteCount)
+                    self.hasLoadedFavoriteCount = true
+                }
+                if let isFavorited = content.isFavorited { self.isFavorited = isFavorited }
                 self.updatePrimaryActionTitle()
+                self.updateFavoriteButton()
                 self.richContentView.load(markup: content.bodyHTML.isEmpty ? content.body : content.bodyHTML)
                 if let url = content.canonicalURL {
                     self.navigationItem.rightBarButtonItems?.last?.accessibilityLabel = "在知乎打开"
@@ -443,9 +465,7 @@ final class DetailViewController: UIViewController {
                     return
                 }
                 let selectedCount = options.filter(\.isSelected).count
-                self.collectionActionButton?.setTitle("\(selectedCount)", for: .normal)
-                self.collectionActionButton?.setImage(UIImage(systemName: selectedCount > 0 ? "bookmark.fill" : "bookmark"), for: .normal)
-                self.collectionActionButton?.accessibilityLabel = "收藏，\(selectedCount) 个收藏夹"
+                self.updateCollectionButton(selectedCount: selectedCount)
                 let alert = UIAlertController(title: "收藏到", message: nil, preferredStyle: .actionSheet)
                 for option in options {
                     let title = option.isSelected ? "✓ \(option.title)（移除）" : option.title
@@ -455,9 +475,10 @@ final class DetailViewController: UIViewController {
                             guard let self = self else { return }
                             if case .success = result {
                                 let count = max(0, selectedCount + (option.isSelected ? -1 : 1))
-                                self.collectionActionButton?.setTitle("\(count)", for: .normal)
-                                self.collectionActionButton?.setImage(UIImage(systemName: count > 0 ? "bookmark.fill" : "bookmark"), for: .normal)
-                                self.collectionActionButton?.accessibilityLabel = "收藏，\(count) 个收藏夹"
+                                if self.hasLoadedFavoriteCount {
+                                    self.displayedFavoriteCount = max(0, self.displayedFavoriteCount + (option.isSelected ? -1 : 1))
+                                }
+                                self.updateCollectionButton(selectedCount: count)
                             }
                             self.showActionResult(result, success: option.isSelected ? "已从收藏夹移除" : "已加入收藏夹")
                         }
@@ -471,6 +492,37 @@ final class DetailViewController: UIViewController {
                 self.present(alert, animated: true)
             }
         }
+    }
+
+    private func loadCollectionState() {
+        guard ZhihuAccountStore.shared.load()?.isLoggedIn == true,
+              item.contentID != nil,
+              !isLoadingCollectionState else { return }
+        isLoadingCollectionState = true
+        ZhihuActionRepository.shared.fetchCollections(for: item) { [weak self] result in
+            guard let self = self else { return }
+            self.isLoadingCollectionState = false
+            guard case let .success(options) = result else { return }
+            self.updateCollectionButton(selectedCount: options.filter(\.isSelected).count)
+        }
+    }
+
+    private func updateCollectionButton(selectedCount: Int) {
+        isFavorited = selectedCount > 0
+        // If the content endpoint has not returned favlists_count yet, the
+        // selected-folder count is the best accurate fallback for this user.
+        if !hasLoadedFavoriteCount {
+            displayedFavoriteCount = max(0, selectedCount)
+            hasLoadedFavoriteCount = true
+        }
+        updateFavoriteButton()
+    }
+
+    private func updateFavoriteButton() {
+        let count = max(0, displayedFavoriteCount)
+        collectionActionButton?.setTitle("\(count)", for: .normal)
+        collectionActionButton?.setImage(UIImage(systemName: isFavorited ? "bookmark.fill" : "bookmark"), for: .normal)
+        collectionActionButton?.accessibilityLabel = "收藏，\(count)"
     }
 
     private func showActionResult(_ result: Result<Void, Error>, success: String) {

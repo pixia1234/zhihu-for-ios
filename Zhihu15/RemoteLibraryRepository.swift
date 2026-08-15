@@ -43,6 +43,8 @@ final class BrowsingHistoryStore {
             "excerpt": item.excerpt,
             "topic": item.topic,
             "upvotes": item.upvotes,
+            "favoriteCount": item.favoriteCount,
+            "isFavorited": item.isFavorited,
             "isVoted": item.isVoted,
             "comments": item.comments,
             "hasImage": item.hasImage
@@ -84,6 +86,8 @@ final class BrowsingHistoryStore {
             hasImage: bool(value["hasImage"]) ?? false,
             imageColor: AppTheme.zhihuBlue.withAlphaComponent(0.08),
             isVoted: bool(value["isVoted"]) ?? false,
+            favoriteCount: int(value["favoriteCount"]) ?? 0,
+            isFavorited: bool(value["isFavorited"]) ?? false,
             avatarURL: string(value["avatarURL"]).flatMap(URL.init(string:)),
             thumbnailURL: string(value["thumbnailURL"]).flatMap(URL.init(string:)),
             contentID: int64(value["contentID"]),

@@ -23,17 +23,39 @@ enum AppTheme {
 
     static func configureTabBar(_ tabBar: UITabBar) {
         let appearance = UITabBarAppearance()
-        appearance.configureWithDefaultBackground()
+        appearance.configureWithTransparentBackground()
         appearance.backgroundEffect = UIBlurEffect(style: .systemMaterial)
-        appearance.backgroundColor = UIColor.systemBackground.withAlphaComponent(0.82)
+        appearance.backgroundColor = UIColor.systemBackground.withAlphaComponent(0.20)
         appearance.shadowColor = border
         tabBar.isTranslucent = true
         tabBar.standardAppearance = appearance
-        if #available(iOS 15.0, *) {
-            tabBar.scrollEdgeAppearance = appearance
-        }
+        tabBar.scrollEdgeAppearance = appearance
         tabBar.tintColor = zhihuBlue
         tabBar.unselectedItemTintColor = secondaryText
+    }
+
+    /// SwiftUI's TabView owns the concrete UITabBar instance. Appearance
+    /// proxies can be applied before that instance is created on iOS 15,
+    /// so apply the same material to the live hierarchy as well.
+    static func configureTabBars(in root: UIViewController?) {
+        guard let root else { return }
+        configureTabBars(in: root.view)
+        for child in root.children {
+            configureTabBars(in: child)
+        }
+        if let presented = root.presentedViewController {
+            configureTabBars(in: presented)
+        }
+    }
+
+    private static func configureTabBars(in view: UIView?) {
+        guard let view else { return }
+        if let tabBar = view as? UITabBar {
+            configureTabBar(tabBar)
+        }
+        for subview in view.subviews {
+            configureTabBars(in: subview)
+        }
     }
 
     static func setTabBarHidden(_ hidden: Bool) {
