@@ -130,7 +130,7 @@ final class AppLockSettingsViewController: UIViewController {
 
     @objc private func valueChanged() {
         AppLockCoordinator.shared.setEnabled(toggle.isOn)
-        if toggle.isOn { view.showSimpleAlert(title: "App 锁已开启", message: "下次从后台返回时会要求验证身份") }
+        if toggle.isOn { showSimpleAlert(title: "App 锁已开启", message: "下次从后台返回时会要求验证身份") }
     }
 }
 

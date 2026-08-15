@@ -62,7 +62,7 @@ final class RichTextEditorViewController: UIViewController, PHPickerViewControll
         let toolbar = UIToolbar(frame: CGRect(x: 0, y: 0, width: view.bounds.width, height: 44))
         let bold = UIBarButtonItem(title: "B", style: .plain, target: self, action: #selector(toggleBold))
         let italic = UIBarButtonItem(title: "I", style: .plain, target: self, action: #selector(toggleItalic))
-        let underline = UIBarButtonItem(title: "U", style: .plain, target: self, action: #selector(toggleUnderline))
+        let underline = UIBarButtonItem(title: "U", style: .plain, target: self, action: #selector(toggleUnderlineFormatting))
         let image = UIBarButtonItem(image: UIImage(systemName: "photo"), style: .plain, target: self, action: #selector(insertImage))
         toolbar.items = [bold, italic, underline, UIBarButtonItem.flexibleSpace(), image]
         return toolbar
@@ -72,7 +72,7 @@ final class RichTextEditorViewController: UIViewController, PHPickerViewControll
 
     @objc private func toggleBold() { toggleTrait(.traitBold) }
     @objc private func toggleItalic() { toggleTrait(.traitItalic) }
-    @objc private func toggleUnderline() {
+    @objc private func toggleUnderlineFormatting() {
         let range = textView.selectedRange
         guard range.length > 0 else { return }
         textView.textStorage.enumerateAttribute(.underlineStyle, in: range) { value, subrange, _ in

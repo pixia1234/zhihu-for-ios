@@ -9,7 +9,9 @@ final class ZhihuCreationRepository {
     func saveAnswerDraft(questionID: Int64, html: String, completion: @escaping (Result<Void, Error>) -> Void) {
         let url = URL(string: "https://www.zhihu.com/api/v4/questions/\(questionID)/draft")!
         let body: [String: Any] = ["content": html, "draft_type": "normal", "delta_time": 30, "settings": ["comment_permission": "all", "table_of_contents_enabled": false]]
-        request(url: url, body: body, completion: completion)
+        request(url: url, body: body) { result in
+            completion(result.map { _ in () })
+        }
     }
 
     func publishAnswer(questionID: Int64, html: String, completion: @escaping (Result<Int64, Error>) -> Void) {

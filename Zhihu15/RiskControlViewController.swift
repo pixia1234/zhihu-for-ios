@@ -42,7 +42,8 @@ final class RiskControlViewController: UIViewController, WKNavigationDelegate {
         ])
         let store = webView.configuration.websiteDataStore.httpCookieStore
         ZhihuCookieUtilities.install(ZhihuCookieUtilities.makeCookies(from: cookies, for: url), in: store) { [weak self] in
-            self?.webView.load(URLRequest(url: url))
+            guard let self = self else { return }
+            self.webView.load(URLRequest(url: self.url))
         }
     }
 

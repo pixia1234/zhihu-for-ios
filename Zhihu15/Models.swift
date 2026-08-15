@@ -24,6 +24,42 @@ struct FeedItem {
     let thumbnailURL: URL? = nil
     let contentID: Int64? = nil
     let questionID: Int64? = nil
+
+    init(
+        id: Int,
+        kind: Kind,
+        author: String,
+        authorRole: String,
+        avatarColor: UIColor,
+        title: String,
+        excerpt: String,
+        topic: String,
+        upvotes: Int,
+        comments: Int,
+        hasImage: Bool,
+        imageColor: UIColor,
+        avatarURL: URL? = nil,
+        thumbnailURL: URL? = nil,
+        contentID: Int64? = nil,
+        questionID: Int64? = nil
+    ) {
+        self.id = id
+        self.kind = kind
+        self.author = author
+        self.authorRole = authorRole
+        self.avatarColor = avatarColor
+        self.title = title
+        self.excerpt = excerpt
+        self.topic = topic
+        self.upvotes = upvotes
+        self.comments = comments
+        self.hasImage = hasImage
+        self.imageColor = imageColor
+        self.avatarURL = avatarURL
+        self.thumbnailURL = thumbnailURL
+        self.contentID = contentID
+        self.questionID = questionID
+    }
 }
 
 struct HotItem {
