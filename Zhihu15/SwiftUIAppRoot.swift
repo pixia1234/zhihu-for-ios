@@ -466,24 +466,6 @@ struct SwiftUIPushDetailLink: View {
             EmptyView()
         }
         .hidden()
-        .onAppear {
-            syncTabBarVisibility()
-        }
-        .onChange(of: route?.id) { _ in
-            syncTabBarVisibility()
-        }
-    }
-
-    private func syncTabBarVisibility() {
-        let hidden = route != nil
-        AppTheme.setTabBarHidden(hidden)
-        // NavigationLink and SwiftUI's TabView update their UIKit hierarchy
-        // on separate layout passes. Re-apply after the destination has been
-        // scheduled so the safe-area calculation sees the final tab-bar
-        // visibility on the very first navigation.
-        DispatchQueue.main.async {
-            AppTheme.setTabBarHidden(hidden)
-        }
     }
 
     @ViewBuilder
@@ -509,7 +491,6 @@ struct SwiftUIDetailView: View {
     @State private var showVideo = false
     @State private var showWebContent = false
     @State private var webURL: URL?
-    @State private var isActionBarReady = false
 
     init(item: FeedItem, restoresTabBarOnDisappear: Bool = true) {
         self.item = item
@@ -519,6 +500,66 @@ struct SwiftUIDetailView: View {
     }
 
     var body: some View {
+        detailScrollView
+        .background(Color(uiColor: .systemBackground).ignoresSafeArea())
+        .background(
+            SwiftUINavigationControllerResolver { navigationController in
+                navigationCoordinator.navigationController = navigationController
+            }
+        )
+        .navigationTitle(store.title)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItemGroup(placement: .navigationBarTrailing) {
+                if item.kind == .video {
+                    Button { showVideo = true } label: { Image(systemName: "play.circle") }
+                        .accessibilityLabel("播放")
+                }
+                Button {
+                    if let url = store.canonicalURL { openContentURL(url) }
+                } label: { Image(systemName: "safari") }
+                    .accessibilityLabel("在知乎打开")
+            }
+            ToolbarItemGroup(placement: .bottomBar) {
+                detailVoteToolbarButton
+                Spacer()
+                detailCommentsToolbarButton
+                Spacer()
+                detailCollectionToolbarButton
+            }
+        }
+        .onAppear {
+            AppTheme.setTabBarHidden(true)
+            store.load()
+        }
+        .onDisappear {
+            if restoresTabBarOnDisappear { AppTheme.setTabBarHidden(false) }
+        }
+        .alert(isPresented: Binding(
+            get: { store.actionMessage != nil },
+            set: { if !$0 { store.actionMessage = nil } }
+        )) {
+            Alert(title: Text("知乎"), message: Text(store.actionMessage ?? ""), dismissButton: .default(Text("好的")))
+        }
+        .sheet(isPresented: $showLogin) { UIKitNavigationScreen { LoginViewController() } }
+        .sheet(isPresented: $showComments) { UIKitNavigationScreen { CommentsViewController(item: item) } }
+        .sheet(isPresented: $showAnswersSheet) {
+            if let question = answersQuestion {
+                UIKitNavigationScreen { QuestionAnswersViewController(question: question, excludingAnswerID: item.kind == .answer ? item.contentID : nil) }
+            } else {
+                SwiftUIEmptyState(title: "缺少问题 ID", systemImage: "questionmark.circle")
+            }
+        }
+        .sheet(isPresented: $showVideo) { UIKitNavigationScreen { VideoPlaybackViewController(item: item) } }
+        .sheet(isPresented: $showWebContent) {
+            if let webURL = webURL {
+                UIKitNavigationScreen { WebContentViewController(url: webURL, title: "知乎内容") }
+            }
+        }
+        .sheet(isPresented: $showCollectionPicker) { collectionPicker }
+    }
+
+    private var detailScrollView: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 authorHeader
@@ -564,74 +605,6 @@ struct SwiftUIDetailView: View {
             .padding(.bottom, 20)
         }
         .background(Color(uiColor: .systemBackground).ignoresSafeArea())
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            // Do not let the first layout pass measure the action bar together
-            // with the parent TabView's tab bar. The tab bar is hidden before
-            // this becomes visible, so safeAreaInset is calculated against
-            // the physical bottom safe area only.
-            if isActionBarReady {
-                actionBar
-            } else {
-                Color.clear.frame(height: 0)
-            }
-        }
-        .background(
-            SwiftUINavigationControllerResolver { navigationController in
-                navigationCoordinator.navigationController = navigationController
-            }
-        )
-        .navigationTitle(store.title)
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItemGroup(placement: .navigationBarTrailing) {
-                if item.kind == .video {
-                    Button { showVideo = true } label: { Image(systemName: "play.circle") }
-                        .accessibilityLabel("播放")
-                }
-                Button {
-                    if let url = store.canonicalURL { openContentURL(url) }
-                } label: { Image(systemName: "safari") }
-                    .accessibilityLabel("在知乎打开")
-            }
-        }
-        .onAppear {
-            AppTheme.setTabBarHidden(true)
-            store.load()
-            isActionBarReady = false
-            DispatchQueue.main.async {
-                AppTheme.setTabBarHidden(true)
-                DispatchQueue.main.async {
-                    AppTheme.setTabBarHidden(true)
-                    isActionBarReady = true
-                }
-            }
-        }
-        .onDisappear {
-            isActionBarReady = false
-            if restoresTabBarOnDisappear { AppTheme.setTabBarHidden(false) }
-        }
-        .alert(isPresented: Binding(
-            get: { store.actionMessage != nil },
-            set: { if !$0 { store.actionMessage = nil } }
-        )) {
-            Alert(title: Text("知乎"), message: Text(store.actionMessage ?? ""), dismissButton: .default(Text("好的")))
-        }
-        .sheet(isPresented: $showLogin) { UIKitNavigationScreen { LoginViewController() } }
-        .sheet(isPresented: $showComments) { UIKitNavigationScreen { CommentsViewController(item: item) } }
-        .sheet(isPresented: $showAnswersSheet) {
-            if let question = answersQuestion {
-                UIKitNavigationScreen { QuestionAnswersViewController(question: question, excludingAnswerID: item.kind == .answer ? item.contentID : nil) }
-            } else {
-                SwiftUIEmptyState(title: "缺少问题 ID", systemImage: "questionmark.circle")
-            }
-        }
-        .sheet(isPresented: $showVideo) { UIKitNavigationScreen { VideoPlaybackViewController(item: item) } }
-        .sheet(isPresented: $showWebContent) {
-            if let webURL = webURL {
-                UIKitNavigationScreen { WebContentViewController(url: webURL, title: "知乎内容") }
-            }
-        }
-        .sheet(isPresented: $showCollectionPicker) { collectionPicker }
     }
 
     private func openAnswers() {
@@ -685,52 +658,67 @@ struct SwiftUIDetailView: View {
         }
     }
 
-    private var actionBar: some View {
-        HStack(spacing: 10) {
-            SwiftUIDetailActionButton(
-                title: item.kind == .question ? "关注" : "\(max(0, store.upvotes))",
-                image: item.kind == .question ? "person.badge.plus" : (store.isVoted ? "arrow.up.circle.fill" : "arrow.up")
-            ) {
-                if ZhihuAccountStore.shared.load()?.isLoggedIn != true {
-                    showLogin = true
-                } else if item.kind == .question {
-                    store.follow { result in
-                        switch result {
-                        case .success:
-                            store.actionMessage = "已关注这个问题"
-                        case let .failure(error):
+    private var detailVoteToolbarButton: some View {
+        Button {
+            if ZhihuAccountStore.shared.load()?.isLoggedIn != true {
+                showLogin = true
+            } else if item.kind == .question {
+                store.follow { result in
+                    switch result {
+                    case .success:
+                        store.actionMessage = "已关注这个问题"
+                    case let .failure(error):
+                        store.actionMessage = error.localizedDescription
+                    }
+                }
+            } else {
+                store.vote { result in
+                    if case let .failure(error) = result {
+                        if let sessionError = error as? ZhihuSessionError,
+                           case .authenticationRequired = sessionError {
+                            showLogin = true
+                        } else {
                             store.actionMessage = error.localizedDescription
                         }
                     }
-                } else {
-                    store.vote { result in
-                        if case let .failure(error) = result {
-                            if let sessionError = error as? ZhihuSessionError,
-                               case .authenticationRequired = sessionError {
-                                showLogin = true
-                            } else {
-                                store.actionMessage = error.localizedDescription
-                            }
-                        }
-                    }
                 }
             }
-            SwiftUIDetailActionButton(title: "\(store.comments)", image: "bubble.left") {
-                showComments = true
-            }
-            SwiftUIDetailActionButton(title: "\(max(0, store.favoriteCount))", image: store.isFavorited ? "bookmark.fill" : "bookmark") {
-                if ZhihuAccountStore.shared.load()?.isLoggedIn != true {
-                    showLogin = true
-                } else {
-                    store.loadCollections()
-                    showCollectionPicker = true
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: item.kind == .question ? "person.badge.plus" : (store.isVoted ? "arrow.up.circle.fill" : "arrow.up"))
+                if item.kind != .question {
+                    Text("\(max(0, store.upvotes))")
                 }
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 4)
-        .background(.ultraThinMaterial)
-        .overlay(Divider(), alignment: .top)
+        .accessibilityLabel(item.kind == .question ? "关注问题" : "赞同，\(max(0, store.upvotes))")
+    }
+
+    private var detailCommentsToolbarButton: some View {
+        Button { showComments = true } label: {
+            HStack(spacing: 4) {
+                Image(systemName: "bubble.left")
+                Text("\(store.comments)")
+            }
+        }
+        .accessibilityLabel("评论，\(store.comments)")
+    }
+
+    private var detailCollectionToolbarButton: some View {
+        Button {
+            if ZhihuAccountStore.shared.load()?.isLoggedIn != true {
+                showLogin = true
+            } else {
+                store.loadCollections()
+                showCollectionPicker = true
+            }
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: store.isFavorited ? "bookmark.fill" : "bookmark")
+                Text("\(max(0, store.favoriteCount))")
+            }
+        }
+        .accessibilityLabel("收藏，\(max(0, store.favoriteCount))")
     }
 
     private var collectionPicker: some View {
@@ -772,26 +760,6 @@ struct SwiftUIDetailView: View {
         } else {
             UIApplication.shared.open(url)
         }
-    }
-}
-
-struct SwiftUIDetailActionButton: View {
-    let title: String
-    let image: String
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            Label(title, systemImage: image)
-                .font(.subheadline.weight(.medium))
-                .lineLimit(1)
-                .minimumScaleFactor(0.75)
-                .frame(maxWidth: .infinity)
-                .frame(height: 40)
-                .background(Color(red: 0.08, green: 0.38, blue: 0.86).opacity(0.08), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
-        }
-        .buttonStyle(.plain)
-        .foregroundColor(Color(red: 0.08, green: 0.38, blue: 0.86))
     }
 }
 
@@ -875,7 +843,10 @@ struct CachedRemoteImage: View {
     var body: some View {
         ZStack {
             if let image = image {
-                Image(uiImage: image).resizable().scaledToFill()
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 Image(systemName: didFail ? "photo" : "photo.on.rectangle.angled")
                     .font(.system(size: 28, weight: .medium)).foregroundColor(.secondary.opacity(0.7))

@@ -12,6 +12,7 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         guard let windowScene = scene as? UIWindowScene else { return }
         AppTheme.configureNavigationBar(UINavigationBar.appearance())
         AppTheme.configureTabBar(UITabBar.appearance())
+        AppTheme.configureToolbar(UIToolbar.appearance())
         let window = UIWindow(windowScene: windowScene)
         window.rootViewController = UIHostingController(rootView: SwiftUIAppRootView())
         self.window = window
@@ -39,6 +40,7 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         // context is ready; AppLockCoordinator's state guards prevent a loop.
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
             AppTheme.configureTabBars(in: window.rootViewController)
+            AppTheme.configureToolbars(in: window.rootViewController)
             AppLockCoordinator.shared.presentIfNeeded(in: window)
         }
     }
@@ -46,12 +48,15 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     private func applyTabBarAppearance() {
         guard let window else { return }
         AppTheme.configureTabBars(in: window.rootViewController)
+        AppTheme.configureToolbars(in: window.rootViewController)
         // SwiftUI may finish installing its TabView after the first layout.
         DispatchQueue.main.async {
             AppTheme.configureTabBars(in: window.rootViewController)
+            AppTheme.configureToolbars(in: window.rootViewController)
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
             AppTheme.configureTabBars(in: window.rootViewController)
+            AppTheme.configureToolbars(in: window.rootViewController)
         }
     }
 

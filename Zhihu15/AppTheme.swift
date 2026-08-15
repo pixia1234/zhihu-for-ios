@@ -34,6 +34,19 @@ enum AppTheme {
         tabBar.unselectedItemTintColor = secondaryText
     }
 
+    static func configureToolbar(_ toolbar: UIToolbar) {
+        let appearance = UIToolbarAppearance()
+        appearance.configureWithDefaultBackground()
+        appearance.backgroundEffect = UIBlurEffect(style: .systemMaterial)
+        appearance.backgroundColor = UIColor.systemBackground.withAlphaComponent(0.22)
+        appearance.shadowColor = border
+        toolbar.isTranslucent = true
+        toolbar.standardAppearance = appearance
+        toolbar.compactAppearance = appearance
+        toolbar.scrollEdgeAppearance = appearance
+        toolbar.tintColor = zhihuBlue
+    }
+
     /// SwiftUI's TabView owns the concrete UITabBar instance. Appearance
     /// proxies can be applied before that instance is created on iOS 15,
     /// so apply the same material to the live hierarchy as well.
@@ -48,6 +61,17 @@ enum AppTheme {
         }
     }
 
+    static func configureToolbars(in root: UIViewController?) {
+        guard let root else { return }
+        configureToolbars(in: root.view)
+        for child in root.children {
+            configureToolbars(in: child)
+        }
+        if let presented = root.presentedViewController {
+            configureToolbars(in: presented)
+        }
+    }
+
     private static func configureTabBars(in view: UIView?) {
         guard let view else { return }
         if let tabBar = view as? UITabBar {
@@ -55,6 +79,16 @@ enum AppTheme {
         }
         for subview in view.subviews {
             configureTabBars(in: subview)
+        }
+    }
+
+    private static func configureToolbars(in view: UIView?) {
+        guard let view else { return }
+        if let toolbar = view as? UIToolbar {
+            configureToolbar(toolbar)
+        }
+        for subview in view.subviews {
+            configureToolbars(in: subview)
         }
     }
 
@@ -76,13 +110,13 @@ enum AppTheme {
                     tabBars.append(tabBarController.tabBar)
                 }
 
-                UIView.performWithoutAnimation {
-                    tabBars.forEach { $0.isHidden = hidden }
-                    window.rootViewController?.view.setNeedsLayout()
-                    window.rootViewController?.view.layoutIfNeeded()
-                    window.setNeedsLayout()
-                    window.layoutIfNeeded()
-                }
+                // Let UIKit perform its normal layout pass. Forcing
+                // layout inside a NavigationLink transition (and wrapping
+                // it in performWithoutAnimation) suppresses the push/pop
+                // animation on the first detail page.
+                tabBars.forEach { $0.isHidden = hidden }
+                window.rootViewController?.view.setNeedsLayout()
+                window.setNeedsLayout()
             }
         }
     }

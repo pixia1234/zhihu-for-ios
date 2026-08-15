@@ -11,6 +11,7 @@ final class RichContentView: UIView, WKNavigationDelegate {
     private let webView: WKWebView
     private var heightConstraint: NSLayoutConstraint!
     private var loadedMarkup: String?
+    private var lastLayoutWidth: CGFloat = 0
 
     var onOpenURL: ((URL) -> Void)?
     var onHeightChange: ((CGFloat) -> Void)?
@@ -28,6 +29,9 @@ final class RichContentView: UIView, WKNavigationDelegate {
             ?? "Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148"
         webView.navigationDelegate = self
         webView.scrollView.isScrollEnabled = false
+        webView.scrollView.bounces = false
+        webView.scrollView.showsHorizontalScrollIndicator = false
+        webView.scrollView.contentInsetAdjustmentBehavior = .never
         webView.scrollView.contentInset = .zero
         webView.translatesAutoresizingMaskIntoConstraints = false
         addSubview(webView)
@@ -56,9 +60,25 @@ final class RichContentView: UIView, WKNavigationDelegate {
         webView.loadHTMLString(RichContentHTML.document(for: ""), baseURL: URL(string: "https://www.zhihu.com/"))
     }
 
-    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-        webView.evaluateJavaScript(RichContentHTML.linkifyScript) { [weak self] _, _ in
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        let width = bounds.width
+        guard width > 0, abs(width - lastLayoutWidth) > 0.5 else { return }
+        lastLayoutWidth = width
+        // The same content view is used in iPhone, iPad split view and
+        // rotation. Re-apply the width rules whenever its actual column
+        // width changes so a previously wide image cannot keep the old
+        // viewport size.
+        webView.evaluateJavaScript(RichContentHTML.layoutScript) { [weak self] _, _ in
             self?.updateHeight()
+        }
+    }
+
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        webView.evaluateJavaScript(RichContentHTML.layoutScript) { [weak self] _, _ in
+            self?.webView.evaluateJavaScript(RichContentHTML.linkifyScript) { [weak self] _, _ in
+                self?.updateHeight()
+            }
         }
         // Images arrive after the document finishes. Two inexpensive passes
         // avoid the common blank/one-line body on slower iOS 15 devices.
@@ -169,7 +189,9 @@ private enum RichContentHTML {
         h1 { font-size: 1.45em; } h2 { font-size: 1.25em; } h3 { font-size: 1.1em; }
         strong { font-weight: 700; } em { font-style: italic; }
         a { color: #1769d2; text-decoration: none; }
-        img { display: block; max-width: 100%; height: auto; margin: 0.75em auto; border-radius: 8px; }
+        html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
+        img, video, svg { display: block; box-sizing: border-box; width: auto !important; max-width: 100% !important; height: auto !important; margin: 0.75em auto; border-radius: 8px; }
+        figure, picture { display: block; width: 100%; max-width: 100%; margin: 0; overflow: hidden; }
         blockquote { margin: 0.7em 0; padding: 0.1em 0.85em; border-left: 3px solid #1769d2; color: -apple-system-secondary-label; background: rgba(128,128,128,0.08); }
         pre, code { font-family: Menlo, monospace; font-size: 0.86em; }
         pre { overflow-x: auto; padding: 0.75em; border-radius: 8px; background: rgba(128,128,128,0.12); white-space: pre-wrap; }
@@ -178,6 +200,23 @@ private enum RichContentHTML {
         </style></head><body>\(content)</body></html>
         """
     }
+
+    static let layoutScript = """
+    (function() {
+        var maxWidth = document.documentElement.clientWidth || document.body.clientWidth || 0;
+        document.documentElement.style.maxWidth = '100%';
+        document.body.style.maxWidth = '100%';
+        document.body.style.overflowX = 'hidden';
+        document.querySelectorAll('img,video,svg').forEach(function(element) {
+            element.style.setProperty('max-width', '100%', 'important');
+            element.style.setProperty('width', 'auto', 'important');
+            element.style.setProperty('height', 'auto', 'important');
+            if (maxWidth > 0 && element.naturalWidth && element.naturalWidth > maxWidth) {
+                element.style.setProperty('width', '100%', 'important');
+            }
+        });
+    })();
+    """
 
     private static func looksLikeHTML(_ source: String) -> Bool {
         source.range(of: #"<\s*(p|div|img|figure|h[1-6]|ul|ol|blockquote|br|a)\b"#, options: [.regularExpression, .caseInsensitive]) != nil

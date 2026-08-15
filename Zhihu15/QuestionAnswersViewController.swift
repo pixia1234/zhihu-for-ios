@@ -26,6 +26,21 @@ final class QuestionAnswersViewController: UIViewController {
         loadAnswers(refreshing: false)
     }
 
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        // The detail page owns the native bottom toolbar. The answers list
+        // must take it out of the navigation layout while it is visible, so
+        // the toolbar can animate back with the detail page on pop.
+        navigationController?.setToolbarHidden(true, animated: animated)
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        if isMovingFromParent {
+            navigationController?.setToolbarHidden(false, animated: animated)
+        }
+    }
+
     private func setupTableView() {
         tableView.translatesAutoresizingMaskIntoConstraints = false
         tableView.backgroundColor = .systemGroupedBackground
