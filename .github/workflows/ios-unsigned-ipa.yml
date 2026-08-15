@@ -25,7 +25,13 @@ jobs:
         run: |
           xcodebuild -version
           xcrun --sdk iphoneos --show-sdk-version
-          test "$(xcodebuild -project Zhihu15.xcodeproj -scheme Zhihu15 -showBuildSettings | awk -F ' = ' '/IPHONEOS_DEPLOYMENT_TARGET/ {print $2; exit}')" = "15.0"
+          xcodebuild -project Zhihu15.xcodeproj -list
+          build_settings="$(xcodebuild -project Zhihu15.xcodeproj -scheme Zhihu15 -showBuildSettings 2>&1)" || {
+            echo "$build_settings"
+            exit 1
+          }
+          echo "$build_settings"
+          echo "$build_settings" | grep -Eq 'IPHONEOS_DEPLOYMENT_TARGET = 15\.0([[:space:]]|$)'
       - name: Build unsigned IPA
         env:
           # The hosted image currently ships with an iOS 17.x SDK. The app
