@@ -61,8 +61,9 @@ final class FeedCell: UITableViewCell {
         excerptLabel.text = item.excerpt
         topicLabel.text = item.topic
         previewView.backgroundColor = item.imageColor
-        previewView.isHidden = !item.hasImage
-        previewHeightConstraint.constant = item.hasImage ? 152 : 0
+        let hasPreview = item.thumbnailURL != nil
+        previewView.isHidden = !hasPreview
+        previewHeightConstraint.constant = hasPreview ? 152 : 0
         imageURL = item.thumbnailURL
         if let url = item.thumbnailURL {
             ImagePipeline.shared.image(for: url) { [weak self] image in

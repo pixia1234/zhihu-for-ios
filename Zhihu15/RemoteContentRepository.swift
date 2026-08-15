@@ -44,7 +44,10 @@ final class RemoteContentRepository {
     }
 
     private static func decode(_ data: Data, fallback: FeedItem) throws -> RemoteContent {
-        guard let root = try JSONSerialization.jsonObject(with: data) as? [String: Any] else { throw ZhihuSessionError.malformedPayload }
+        guard let rawRoot = try JSONSerialization.jsonObject(with: data) as? [String: Any] else { throw ZhihuSessionError.malformedPayload }
+        let root = (rawRoot["data"] as? [String: Any])
+            ?? (rawRoot["article"] as? [String: Any])
+            ?? rawRoot
         let title = string(root["title"]) ?? string((root["question"] as? [String: Any])?["title"]) ?? fallback.title
         let bodyHTML = string(root["content_html"]) ?? string(root["contentHtml"]) ?? string(root["content"]) ?? string(root["detail"]) ?? string(root["description"]) ?? fallback.excerpt
         let body = plainText(bodyHTML)

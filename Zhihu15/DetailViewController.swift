@@ -100,7 +100,7 @@ final class DetailViewController: UIViewController {
         let topic = PillLabel(text: item.topic)
         contentStack.addArrangedSubview(topic)
 
-        if item.hasImage {
+        if let thumbnailURL = item.thumbnailURL {
             let imagePlaceholder = UIView()
             imagePlaceholder.backgroundColor = item.imageColor
             imagePlaceholder.layer.cornerRadius = 12
@@ -127,11 +127,9 @@ final class DetailViewController: UIViewController {
                 preview.topAnchor.constraint(equalTo: imagePlaceholder.topAnchor),
                 preview.bottomAnchor.constraint(equalTo: imagePlaceholder.bottomAnchor)
             ])
-            if let url = item.thumbnailURL {
-                ImagePipeline.shared.image(for: url) { image in
-                    preview.image = image
-                    imageIcon.isHidden = image != nil
-                }
+            ImagePipeline.shared.image(for: thumbnailURL) { image in
+                preview.image = image
+                imageIcon.isHidden = image != nil
             }
             contentStack.addArrangedSubview(imagePlaceholder)
         }

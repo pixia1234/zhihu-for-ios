@@ -276,8 +276,8 @@ struct SwiftUIFeedCard: View {
             }
             Text(item.title).font(.headline).foregroundColor(.primary).multilineTextAlignment(.leading).lineLimit(4)
             if !item.excerpt.isEmpty { Text(item.excerpt).font(.subheadline).foregroundColor(.secondary).multilineTextAlignment(.leading).lineLimit(4) }
-            if item.hasImage {
-                CachedRemoteImage(url: item.thumbnailURL)
+            if let thumbnailURL = item.thumbnailURL {
+                CachedRemoteImage(url: thumbnailURL)
                     .frame(maxWidth: .infinity).frame(height: 174)
                     .background(Color(uiColor: item.imageColor), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                     .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
@@ -374,9 +374,12 @@ struct SwiftUIProfileView: View {
                 profileHeader
                 if store.isLoggedIn {
                     profileTabs
+                    if let error = store.errorMessage {
+                        SwiftUIErrorCard(message: error) { store.load(tab: store.tab) }
+                    }
                     if store.isLoading && store.items.isEmpty { ProgressView("正在读取你的内容").frame(maxWidth: .infinity).padding(30) }
                     ForEach(store.items, id: \.id) { item in
-                        Button { detailRoute = SwiftUIDetailRoute(item: item) } label: { SwiftUIFeedCard(item: item) }.buttonStyle(.plain)
+                        SwiftUIFeedCard(item: item, onOpen: { detailRoute = SwiftUIDetailRoute(item: item) })
                     }
                     if store.items.isEmpty && !store.isLoading { SwiftUIEmptyState(title: "这里还没有公开内容", systemImage: "doc.text") }
                 } else {
@@ -424,7 +427,8 @@ struct SwiftUIProfileView: View {
             }
         }
         .padding(18)
-        .background(LinearGradient(colors: [Color(red: 0.08, green: 0.38, blue: 0.86).opacity(0.18), Color(uiColor: .secondarySystemGroupedBackground)], startPoint: .topLeading, endPoint: .bottomTrailing), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(Color(uiColor: .separator).opacity(0.16)))
     }
 
     private var profileTabs: some View {
@@ -469,13 +473,18 @@ final class SwiftUIProfileStore: ObservableObject {
     @Published private(set) var isLoading = false
     @Published var tab: ProfileContentTab = .answers
     @Published private(set) var isLoggedIn = false
+    @Published var errorMessage: String?
 
     func load() {
         let account = ZhihuAccountStore.shared.load()
         isLoggedIn = account?.isLoggedIn == true
         profile = account?.profile
+        errorMessage = nil
         guard isLoggedIn else { items = []; return }
-        ZhihuAPIClient.shared.fetchProfile { [weak self] _ in self?.load(tab: self?.tab ?? .answers) }
+        ZhihuAPIClient.shared.fetchProfile { [weak self] result in
+            if case let .failure(error) = result { self?.errorMessage = error.localizedDescription }
+            self?.load(tab: self?.tab ?? .answers)
+        }
         RemoteProfileRepository.shared.fetchProfile { [weak self] result in
             if case let .success(profile) = result { self?.remoteProfile = profile }
         }
@@ -485,10 +494,14 @@ final class SwiftUIProfileStore: ObservableObject {
         self.tab = tab
         guard isLoggedIn else { return }
         isLoading = true
+        errorMessage = nil
         RemoteProfileRepository.shared.fetchContent(tab: tab) { [weak self] result in
             guard let self = self else { return }
             self.isLoading = false
-            if case let .success(items) = result { self.items = items }
+            switch result {
+            case let .success(items): self.items = items
+            case let .failure(error): self.errorMessage = error.localizedDescription
+            }
         }
     }
 
@@ -502,7 +515,7 @@ struct SwiftUICollectionView: View {
     @State private var items = Array(SampleData.recommendations.prefix(3))
     @State private var detailRoute: SwiftUIDetailRoute?
     var body: some View {
-        ScrollView { LazyVStack(spacing: 14) { ForEach(items, id: \.id) { item in Button { detailRoute = SwiftUIDetailRoute(item: item) } label: { SwiftUIFeedCard(item: item) }.buttonStyle(.plain) } }.padding(16) }
+        ScrollView { LazyVStack(spacing: 14) { ForEach(items, id: \.id) { item in SwiftUIFeedCard(item: item, onOpen: { detailRoute = SwiftUIDetailRoute(item: item) }) } }.padding(16) }
             .background(Color(uiColor: .systemGroupedBackground).ignoresSafeArea())
             .navigationTitle("收藏")
             .onAppear { load() }
@@ -519,7 +532,7 @@ struct SwiftUISearchView: View {
         VStack(spacing: 0) {
             TextField("搜索问题、话题或用户", text: $query).textFieldStyle(.roundedBorder).padding()
             if results.isEmpty { SwiftUIEmptyState(title: query.isEmpty ? "输入关键词开始探索" : "没有找到相关内容", systemImage: "magnifyingglass").frame(maxHeight: .infinity) }
-            else { ScrollView { LazyVStack(spacing: 14) { ForEach(results, id: \.id) { item in Button { detailRoute = SwiftUIDetailRoute(item: item) } label: { SwiftUIFeedCard(item: item) }.buttonStyle(.plain) } }.padding(16) } }
+            else { ScrollView { LazyVStack(spacing: 14) { ForEach(results, id: \.id) { item in SwiftUIFeedCard(item: item, onOpen: { detailRoute = SwiftUIDetailRoute(item: item) }) }.padding(16) } } }
         }
         .background(Color(uiColor: .systemGroupedBackground).ignoresSafeArea())
         .navigationTitle("搜索")

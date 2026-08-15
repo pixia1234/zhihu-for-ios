@@ -43,7 +43,7 @@ final class ImagePipeline {
         // The old cache may contain AVIF/HTML responses produced by the
         // previous Accept header. Use a new namespace so iOS 15 never reuses
         // those undecodable/blank files after an app update.
-        directory = base.appendingPathComponent("zhihu15-images-v2", isDirectory: true)
+        directory = base.appendingPathComponent("zhihu15-images-v3", isDirectory: true)
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     }
 

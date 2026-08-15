@@ -75,9 +75,10 @@ final class RemoteProfileRepository {
     }
 
     func fetchContent(tab: ProfileContentTab, completion: @escaping (Result<[FeedItem], Error>) -> Void) {
-        guard let token = ZhihuAccountStore.shared.load()?.profile?.urlToken, !token.isEmpty else {
+        guard let profile = ZhihuAccountStore.shared.load()?.profile else {
             completion(.failure(ZhihuSessionError.authenticationRequired)); return
         }
+        let token = profile.urlToken?.isEmpty == false ? profile.urlToken! : profile.id
         let endpoint: String
         switch tab {
         case .answers: endpoint = "https://www.zhihu.com/api/v4/members/\(Self.path(token))/answers"
