@@ -163,6 +163,7 @@ extension QuestionAnswersViewController: UITableViewDelegate {
 
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
+        guard answers.indices.contains(indexPath.row) else { return }
         open(answers[indexPath.row])
     }
 }

@@ -2,21 +2,29 @@ import SwiftUI
 import UIKit
 
 struct SwiftUIAppRootView: View {
+    @State private var selectedTab = 0
+
     var body: some View {
-        TabView {
+        TabView(selection: $selectedTab) {
             NavigationView { SwiftUIHomeView() }
                 .navigationViewStyle(StackNavigationViewStyle())
                 .tabItem { Label("首页", systemImage: "house") }
+                .tag(0)
 
             NavigationView { SwiftUICollectionView() }
                 .navigationViewStyle(StackNavigationViewStyle())
                 .tabItem { Label("收藏", systemImage: "bookmark") }
+                .tag(1)
 
             NavigationView { SwiftUIProfileView() }
                 .navigationViewStyle(StackNavigationViewStyle())
                 .tabItem { Label("我的", systemImage: "person.crop.circle") }
+                .tag(2)
         }
         .accentColor(Color(red: 0.08, green: 0.38, blue: 0.86))
+        .onReceive(NotificationCenter.default.publisher(for: .zhihuHandoffOpenItem)) { _ in
+            selectedTab = 0
+        }
     }
 }
 
@@ -202,6 +210,11 @@ struct SwiftUIHomeView: View {
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
             Task { await store.refresh() }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .zhihuHandoffOpenItem)) { notification in
+            if let item = notification.object as? FeedItem {
+                detailRoute = SwiftUIDetailRoute(item: item)
+            }
+        }
         .background(SwiftUIPushDetailLink(route: $detailRoute))
         .sheet(isPresented: $showMessages) {
             UIKitNavigationScreen { MessagesViewController() }
@@ -325,11 +338,21 @@ struct SwiftUIPushDetailLink: View {
     @ViewBuilder
     private var destination: some View {
         if let route = route {
-            UIKitNavigationScreen { DetailViewController(item: route.item) }
+            UIKitDetailScreen(item: route.item)
         } else {
             EmptyView()
         }
     }
+}
+
+struct UIKitDetailScreen: UIViewControllerRepresentable {
+    let item: FeedItem
+
+    func makeUIViewController(context: Context) -> DetailViewController {
+        DetailViewController(item: item)
+    }
+
+    func updateUIViewController(_ viewController: DetailViewController, context: Context) {}
 }
 
 struct CachedRemoteImage: View {
@@ -413,7 +436,8 @@ struct SwiftUIProfileView: View {
                 }
                 management
             }
-            .frame(maxWidth: 860).frame(maxWidth: .infinity)
+            .frame(maxWidth: 860, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 16).padding(.vertical, 14)
         }
         .background(Color(uiColor: .systemGroupedBackground).ignoresSafeArea())
@@ -436,12 +460,19 @@ struct SwiftUIProfileView: View {
             HStack(alignment: .top, spacing: 14) {
                 CachedAvatar(url: store.profile?.avatarURL, name: store.profile?.name ?? "知", color: AppTheme.zhihuBlue, size: 76)
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(store.profile?.name ?? "知乎用户").font(.title2.weight(.bold))
+                    Text(store.profile?.name ?? "知乎用户")
+                        .font(.title2.weight(.bold))
+                        .lineLimit(1)
                     Text(store.profile?.headline ?? (store.isLoggedIn ? "记录思考，分享发现" : "登录后同步你的收藏、历史与账号信息"))
-                        .font(.subheadline).foregroundColor(.secondary).fixedSize(horizontal: false, vertical: true)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .lineLimit(3)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
                 Spacer()
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
             if let profile = store.remoteProfile {
                 HStack(spacing: 0) {
                     ProfileStat(value: profile.answerCount, title: "回答")
@@ -453,6 +484,7 @@ struct SwiftUIProfileView: View {
         }
         .padding(18)
         .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .frame(maxWidth: .infinity, alignment: .leading)
         .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(Color(uiColor: .separator).opacity(0.16)))
     }
 
@@ -483,12 +515,12 @@ struct SwiftUIProfileView: View {
 struct ProfileStat: View {
     let value: Int
     let title: String
-    var body: some View { VStack(spacing: 3) { Text(value.formatted()).font(.headline.monospacedDigit()); Text(title).font(.caption).foregroundColor(.secondary) }.frame(maxWidth: .infinity) }
+    var body: some View { VStack(spacing: 3) { Text(value.formatted()).font(.headline.monospacedDigit()).lineLimit(1).minimumScaleFactor(0.75); Text(title).font(.caption).foregroundColor(.secondary).lineLimit(1) }.frame(maxWidth: .infinity) }
 }
 
 struct ProfileActionRow: View {
     let title: String; let image: String; let action: () -> Void
-    var body: some View { Button(action: action) { HStack { Image(systemName: image).foregroundColor(Color(red: 0.08, green: 0.38, blue: 0.86)).frame(width: 24); Text(title); Spacer(); Image(systemName: "chevron.right").font(.caption).foregroundColor(.secondary) }.padding(15).background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous)) }.buttonStyle(.plain) }
+    var body: some View { Button(action: action) { HStack { Image(systemName: image).foregroundColor(Color(red: 0.08, green: 0.38, blue: 0.86)).frame(width: 24); Text(title).lineLimit(1); Spacer(minLength: 8); Image(systemName: "chevron.right").font(.caption).foregroundColor(.secondary) }.frame(maxWidth: .infinity, alignment: .leading).padding(15).background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous)) }.buttonStyle(.plain) }
 }
 
 final class SwiftUIProfileStore: ObservableObject {

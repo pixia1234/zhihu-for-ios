@@ -16,6 +16,11 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         window.rootViewController = UIHostingController(rootView: SwiftUIAppRootView())
         self.window = window
         window.makeKeyAndVisible()
+        if let activity = connectionOptions.userActivities.first {
+            DispatchQueue.main.async {
+                HandoffCoordinator.shared.handle(activity)
+            }
+        }
     }
 
     func sceneWillResignActive(_ scene: UIScene) {
@@ -25,6 +30,10 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     func sceneDidBecomeActive(_ scene: UIScene) {
         guard let window = window else { return }
         DispatchQueue.main.async { AppLockCoordinator.shared.presentIfNeeded(in: window) }
+    }
+
+    func scene(_ scene: UIScene, continue userActivity: NSUserActivity) {
+        HandoffCoordinator.shared.handle(userActivity)
     }
 
     func windowScene(

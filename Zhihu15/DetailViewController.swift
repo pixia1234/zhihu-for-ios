@@ -37,6 +37,15 @@ final class DetailViewController: UIViewController {
         loadRemoteContent()
     }
 
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        HandoffCoordinator.shared.start(item: item)
+    }
+
+    deinit {
+        HandoffCoordinator.shared.stop()
+    }
+
     private func setupScrollView() {
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(scrollView)
@@ -240,7 +249,7 @@ final class DetailViewController: UIViewController {
     }
 
     @objc private func openComments() {
-        navigationController?.pushViewController(CommentsViewController(item: item), animated: true)
+        push(CommentsViewController(item: item))
     }
 
     @objc private func openAnswers() {
@@ -250,11 +259,11 @@ final class DetailViewController: UIViewController {
             showActionResult(.failure(ZhihuSessionError.malformedPayload), success: "")
             return
         }
-        navigationController?.pushViewController(QuestionAnswersViewController(question: item), animated: true)
+        push(QuestionAnswersViewController(question: item))
     }
 
     @objc private func openVideo() {
-        navigationController?.pushViewController(VideoPlaybackViewController(item: item), animated: true)
+        push(VideoPlaybackViewController(item: item))
     }
 
     @objc private func openCanonicalURL() {
@@ -265,9 +274,17 @@ final class DetailViewController: UIViewController {
     private func openContentURL(_ url: URL) {
         guard url.scheme?.lowercased() == "https" || url.scheme?.lowercased() == "http" else { return }
         if url.host?.lowercased().hasSuffix("zhihu.com") == true {
-            navigationController?.pushViewController(WebContentViewController(url: url, title: "知乎内容"), animated: true)
+            push(WebContentViewController(url: url, title: "知乎内容"))
         } else {
             UIApplication.shared.open(url)
+        }
+    }
+
+    private func push(_ controller: UIViewController) {
+        if let navigationController {
+            navigationController.pushViewController(controller, animated: true)
+        } else {
+            present(UINavigationController(rootViewController: controller), animated: true)
         }
     }
 

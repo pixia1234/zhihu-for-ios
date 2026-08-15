@@ -4,7 +4,7 @@
 
 ## 当前版本
 
-- 当前版本：0.1.11（下一次标签构建为 0.1.12）
+- 当前版本：0.1.12（下一次标签构建为 0.1.13）
 - 最低系统：iOS 15.0
 - UI：SwiftUI 主导，UIKit 承载复杂内容页面，不依赖第三方 UI 库
 
@@ -22,6 +22,7 @@
 - 视频能力：获取知乎视频播放地址并使用 AVKit 播放
 - 隐私保护：Face ID、Touch ID 或设备密码 App 锁
 - iPad 适配：支持 iPad 横竖屏、系统 Split View/Slide Over 窗口缩放，窄分屏自动关闭大标题，列表和编辑页面使用自适应约束；详情操作栏固定在安全区底部
+- 接力：详情页通过 Handoff 接力到同一 iCloud 账号的其他 Apple 设备
 - UI 架构：SwiftUI 主导航与信息流，UIKit 承载登录二维码、风控验证、正文 Web/Markdown、视频、富文本编辑器和 App 锁等复杂场景
 - 兼容性：SwiftUI/UIKit 混合、Swift 5、iOS 15 部署目标，兼容 iPhone/iPad 全尺寸、横竖屏和 Split View，不使用 iOS 26 专属 API
 
