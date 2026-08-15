@@ -44,6 +44,7 @@
 		A10000010000000000000024 /* RichContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000025 /* RichContentView.swift */; };
 		A10000010000000000000025 /* SwiftUIAppRoot.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000026 /* SwiftUIAppRoot.swift */; };
 		A10000010000000000000026 /* RemoteProfileRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000027 /* RemoteProfileRepository.swift */; };
+		A10000010000000000000027 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000028 /* LaunchScreen.storyboard */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -86,6 +87,7 @@
 		B10000010000000000000025 /* RichContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichContentView.swift; sourceTree = "<group>"; };
 		B10000010000000000000026 /* SwiftUIAppRoot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftUIAppRoot.swift; sourceTree = "<group>"; };
 		B10000010000000000000027 /* RemoteProfileRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteProfileRepository.swift; sourceTree = "<group>"; };
+		B10000010000000000000028 /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -148,6 +150,7 @@
 				B10000010000000000000025 /* RichContentView.swift */,
 				B10000010000000000000026 /* SwiftUIAppRoot.swift */,
 				B10000010000000000000027 /* RemoteProfileRepository.swift */,
+				B10000010000000000000028 /* LaunchScreen.storyboard */,
 			);
 			path = Zhihu15;
 			sourceTree = "<group>";
@@ -219,6 +222,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A10000010000000000000023 /* Assets.xcassets in Resources */,
+				A10000010000000000000027 /* LaunchScreen.storyboard in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -278,6 +282,7 @@
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIRequiresFullScreen = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = "";
@@ -303,6 +308,7 @@
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIRequiresFullScreen = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = "";
@@ -329,6 +335,7 @@
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIRequiresFullScreen = NO;
 				INFOPLIST_FILE = Zhihu15/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -346,6 +353,7 @@
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIRequiresFullScreen = NO;
 				INFOPLIST_FILE = Zhihu15/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
