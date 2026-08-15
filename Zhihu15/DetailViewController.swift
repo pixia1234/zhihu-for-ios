@@ -11,6 +11,7 @@ final class DetailViewController: UIViewController {
     private let primaryActionButton = UIButton(type: .system)
     private let managesNavigationBar: Bool
     private var collectionActionButton: UIButton?
+    private var actionBarBottomConstraint: NSLayoutConstraint?
     private var canonicalURL: URL?
     private var displayedUpvotes: Int
     private var hasVoted = false
@@ -56,6 +57,20 @@ final class DetailViewController: UIViewController {
         loadCollectionState()
     }
 
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        // A detail controller hosted by SwiftUI's TabView can retain the
+        // TabView height in its safeAreaInsets after the tab bar is hidden.
+        // Use the window's physical safe area (home indicator only) instead
+        // of the inherited child safe area, so the action bar moves down with
+        // the hidden tab bar on iPhone and iPad.
+        let bottomInset = max(0, view.window?.safeAreaInsets.bottom ?? 0)
+        let constant = -bottomInset
+        if actionBarBottomConstraint?.constant != constant {
+            actionBarBottomConstraint?.constant = constant
+        }
+    }
+
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         // SwiftUI can reuse a navigation item when this controller is hosted
@@ -68,6 +83,7 @@ final class DetailViewController: UIViewController {
             didHideTabBar = true
         }
         AppTheme.setTabBarHidden(true)
+        view.setNeedsLayout()
     }
 
     override func viewDidDisappear(_ animated: Bool) {
@@ -143,10 +159,11 @@ final class DetailViewController: UIViewController {
         actionBar.translatesAutoresizingMaskIntoConstraints = false
         actionBar.clipsToBounds = true
         view.addSubview(actionBar)
+        actionBarBottomConstraint = actionBar.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         NSLayoutConstraint.activate([
             actionBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             actionBar.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            actionBar.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor)
+            actionBarBottomConstraint!
         ])
 
         actionsStack.axis = .horizontal
