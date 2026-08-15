@@ -9,13 +9,15 @@ final class DetailViewController: UIViewController {
     private let titleLabel = UILabel()
     private let richContentView = RichContentView()
     private let primaryActionButton = UIButton(type: .system)
+    private let managesNavigationBar: Bool
     private var canonicalURL: URL?
     private var displayedUpvotes: Int
     private var hasVoted = false
     private var isVoting = false
 
-    init(item: FeedItem) {
+    init(item: FeedItem, managesNavigationBar: Bool = false) {
         self.item = item
+        self.managesNavigationBar = managesNavigationBar
         self.displayedUpvotes = item.upvotes
         self.hasVoted = item.isVoted
         super.init(nibName: nil, bundle: nil)
@@ -28,10 +30,9 @@ final class DetailViewController: UIViewController {
         title = item.kind.rawValue
         navigationItem.largeTitleDisplayMode = .never
         view.backgroundColor = .systemBackground
-        var actions = [UIBarButtonItem(title: "评论", style: .plain, target: self, action: #selector(openComments))]
-        if item.kind == .video { actions.insert(UIBarButtonItem(title: "播放", style: .plain, target: self, action: #selector(openVideo)), at: 0) }
-        actions.append(UIBarButtonItem(image: UIImage(systemName: "safari"), style: .plain, target: self, action: #selector(openCanonicalURL)))
-        navigationItem.rightBarButtonItems = actions
+        if !managesNavigationBar {
+            navigationItem.rightBarButtonItems = makeNavigationBarItems()
+        }
         setupActionBar()
         setupScrollView()
         buildContent()
@@ -88,6 +89,34 @@ final class DetailViewController: UIViewController {
             contentStack.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor),
             contentStack.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor)
         ])
+    }
+
+    private func makeNavigationBarItems() -> [UIBarButtonItem] {
+        var actions = [
+            UIBarButtonItem(image: UIImage(systemName: "bubble.left"), style: .plain, target: self, action: #selector(openComments))
+        ]
+        actions[0].accessibilityLabel = "评论"
+        if item.kind == .video {
+            let play = UIBarButtonItem(image: UIImage(systemName: "play.circle"), style: .plain, target: self, action: #selector(openVideo))
+            play.accessibilityLabel = "播放"
+            actions.insert(play, at: 0)
+        }
+        let browser = UIBarButtonItem(image: UIImage(systemName: "safari"), style: .plain, target: self, action: #selector(openCanonicalURL))
+        browser.accessibilityLabel = "在知乎打开"
+        actions.append(browser)
+        return actions
+    }
+
+    func openCommentsFromNavigationHost() {
+        openComments()
+    }
+
+    func openCanonicalURLFromNavigationHost() {
+        openCanonicalURL()
+    }
+
+    func openVideoFromNavigationHost() {
+        openVideo()
     }
 
     private func setupActionBar() {

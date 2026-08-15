@@ -317,6 +317,12 @@ struct SwiftUIFeedCard: View {
 
 struct SwiftUIDetailRoute: Identifiable { let id = UUID(); let item: FeedItem }
 
+final class SwiftUIDetailActionBridge: ObservableObject {
+    var openComments: (() -> Void)?
+    var openCanonicalURL: (() -> Void)?
+    var openVideo: (() -> Void)?
+}
+
 struct SwiftUIPushDetailLink: View {
     @Binding var route: SwiftUIDetailRoute?
 
@@ -338,18 +344,56 @@ struct SwiftUIPushDetailLink: View {
     @ViewBuilder
     private var destination: some View {
         if let route = route {
-            UIKitDetailScreen(item: route.item)
+            SwiftUIDetailContainer(item: route.item)
         } else {
             EmptyView()
         }
     }
 }
 
+private struct SwiftUIDetailContainer: View {
+    let item: FeedItem
+    @StateObject private var actionBridge = SwiftUIDetailActionBridge()
+
+    var body: some View {
+        UIKitDetailScreen(item: item, actionBridge: actionBridge)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItemGroup(placement: .navigationBarTrailing) {
+                    if item.kind == .video {
+                        Button { actionBridge.openVideo?() } label: {
+                            Image(systemName: "play.circle")
+                        }
+                        .accessibilityLabel("播放")
+                    }
+                    Button { actionBridge.openComments?() } label: {
+                        Image(systemName: "bubble.left")
+                    }
+                    .accessibilityLabel("评论")
+                    Button { actionBridge.openCanonicalURL?() } label: {
+                        Image(systemName: "safari")
+                    }
+                    .accessibilityLabel("在知乎打开")
+                }
+            }
+    }
+}
+
 struct UIKitDetailScreen: UIViewControllerRepresentable {
     let item: FeedItem
+    let actionBridge: SwiftUIDetailActionBridge?
+
+    init(item: FeedItem, actionBridge: SwiftUIDetailActionBridge? = nil) {
+        self.item = item
+        self.actionBridge = actionBridge
+    }
 
     func makeUIViewController(context: Context) -> DetailViewController {
-        DetailViewController(item: item)
+        let viewController = DetailViewController(item: item, managesNavigationBar: actionBridge != nil)
+        actionBridge?.openComments = { [weak viewController] in viewController?.openCommentsFromNavigationHost() }
+        actionBridge?.openCanonicalURL = { [weak viewController] in viewController?.openCanonicalURLFromNavigationHost() }
+        actionBridge?.openVideo = { [weak viewController] in viewController?.openVideoFromNavigationHost() }
+        return viewController
     }
 
     func updateUIViewController(_ viewController: DetailViewController, context: Context) {

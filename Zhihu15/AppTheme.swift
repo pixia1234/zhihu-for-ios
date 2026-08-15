@@ -24,8 +24,10 @@ enum AppTheme {
     static func configureTabBar(_ tabBar: UITabBar) {
         let appearance = UITabBarAppearance()
         appearance.configureWithDefaultBackground()
-        appearance.backgroundColor = .systemBackground
+        appearance.backgroundEffect = UIBlurEffect(style: .systemMaterial)
+        appearance.backgroundColor = UIColor.systemBackground.withAlphaComponent(0.82)
         appearance.shadowColor = border
+        tabBar.isTranslucent = true
         tabBar.standardAppearance = appearance
         if #available(iOS 15.0, *) {
             tabBar.scrollEdgeAppearance = appearance
