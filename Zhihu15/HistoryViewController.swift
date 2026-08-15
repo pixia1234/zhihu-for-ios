@@ -31,6 +31,11 @@ final class HistoryViewController: UIViewController {
             }
         }
     }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        AppTheme.setTabBarHidden(false)
+    }
 }
 
 extension HistoryViewController: UITableViewDataSource {

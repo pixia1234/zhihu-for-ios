@@ -93,30 +93,52 @@ enum AppTheme {
     }
 
     static func setTabBarHidden(_ hidden: Bool) {
+        // SwiftUI invokes this from view lifecycle callbacks, but keeping the
+        // operation main-thread-only also makes Handoff and UIKit entry points
+        // use exactly the same transition behavior.
+        guard Thread.isMainThread else {
+            DispatchQueue.main.async {
+                AppTheme.setTabBarHidden(hidden)
+            }
+            return
+        }
+
         let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
         for scene in scenes {
             for window in scene.windows {
                 guard let rootViewController = window.rootViewController else { continue }
 
-                // SwiftUI's TabView is backed by a UITabBar, but not
-                // necessarily by a UITabBarController. The old lookup only
-                // handled the UIKit controller case, so the first SwiftUI
-                // detail navigation could retain the TabView's bottom safe
-                // area even after the detail page appeared.
+                // SwiftUI's TabView owns a live UITabBar, but it is not
+                // necessarily hosted by a UITabBarController. Only touch the
+                // concrete bars in the root hierarchy; a presented UIKit
+                // screen must not become a second tab-bar owner.
                 var tabBars: [UITabBar] = []
                 collectTabBars(in: rootViewController.view, into: &tabBars)
+                // On some iOS 15 builds SwiftUI keeps the TabView bar behind
+                // an internal tab-bar controller whose view is not exposed
+                // during the first hierarchy walk. Resolve that same live
+                // bar as a fallback, without introducing another hide path.
                 if let tabBarController = findTabBarController(in: rootViewController),
                    !tabBars.contains(where: { $0 === tabBarController.tabBar }) {
                     tabBars.append(tabBarController.tabBar)
                 }
-
-                // Let UIKit perform its normal layout pass. Forcing
-                // layout inside a NavigationLink transition (and wrapping
-                // it in performWithoutAnimation) suppresses the push/pop
-                // animation on the first detail page.
                 tabBars.forEach { $0.isHidden = hidden }
-                window.rootViewController?.view.setNeedsLayout()
-                window.setNeedsLayout()
+
+                // SwiftUI's TabView has no UITabBarController, so flipping
+                // isHidden alone leaves the tab-bar height in the content
+                // safe area; a pushed page's bottom toolbar then keeps an
+                // extra bottom inset. Re-run the root layout after the
+                // push/pop transition has started so the toolbar lays out
+                // against the real bottom edge, without suppressing the
+                // transition animation the way a synchronous layout pass
+                // inside onAppear does.
+                let root = rootViewController
+                DispatchQueue.main.async {
+                    root.view.setNeedsLayout()
+                    window.setNeedsLayout()
+                    window.layoutIfNeeded()
+                    root.view.layoutIfNeeded()
+                }
             }
         }
     }
@@ -134,8 +156,6 @@ enum AppTheme {
     private static func findTabBarController(in controller: UIViewController?) -> UITabBarController? {
         guard let controller else { return nil }
         if let tabBarController = controller as? UITabBarController { return tabBarController }
-        if let presented = controller.presentedViewController,
-           let result = findTabBarController(in: presented) { return result }
         for child in controller.children.reversed() {
             if let result = findTabBarController(in: child) { return result }
         }

@@ -341,10 +341,22 @@ struct SwiftUIFeedCardLink: View {
     var onShare: (() -> Void)? = nil
 
     var body: some View {
-        NavigationLink(destination: SwiftUIDetailView(item: item)) {
+        NavigationLink(destination: SwiftUIDetailDestinationView(item: item)) {
             SwiftUIFeedCard(item: item, onVote: onVote, onComment: onComment, onShare: onShare)
         }
         .buttonStyle(.plain)
+    }
+}
+
+/// Every in-app and external navigation path resolves to this one detail
+/// destination. Keeping the destination in one view prevents SwiftUI from
+/// creating subtly different toolbar/safe-area hierarchies for cards and
+/// Handoff.
+struct SwiftUIDetailDestinationView: View {
+    let item: FeedItem
+
+    var body: some View {
+        SwiftUIDetailView(item: item)
     }
 }
 
@@ -491,7 +503,6 @@ struct SwiftUIHandoffDetailLink: View {
                 set: { isActive in
                     if !isActive {
                         route = nil
-                        AppTheme.setTabBarHidden(false)
                     }
                 }
             )
@@ -504,7 +515,7 @@ struct SwiftUIHandoffDetailLink: View {
     @ViewBuilder
     private var destination: some View {
         if let route = route {
-            SwiftUIDetailView(item: route.item)
+            SwiftUIDetailDestinationView(item: route.item)
         } else {
             EmptyView()
         }
@@ -1024,9 +1035,7 @@ struct SwiftUIRichContentView: UIViewRepresentable {
 }
 
 func makeSwiftUIDetailViewController(item: FeedItem) -> UIViewController {
-    let controller = UIHostingController(rootView: SwiftUIDetailView(item: item))
-    controller.hidesBottomBarWhenPushed = true
-    return controller
+    UIHostingController(rootView: SwiftUIDetailDestinationView(item: item))
 }
 
 struct CachedRemoteImage: View {
