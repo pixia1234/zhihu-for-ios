@@ -206,7 +206,7 @@ final class HomeViewController: UIViewController {
         if item.kind == .video {
             navigationController?.pushViewController(VideoPlaybackViewController(item: item), animated: true)
         } else {
-            navigationController?.pushViewController(DetailViewController(item: item), animated: true)
+            navigationController?.pushViewController(makeSwiftUIDetailViewController(item: item), animated: true)
         }
     }
 

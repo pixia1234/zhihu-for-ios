@@ -89,7 +89,7 @@ final class QuestionAnswersViewController: UIViewController {
     }
 
     private func open(_ item: FeedItem) {
-        navigationController?.pushViewController(DetailViewController(item: item), animated: true)
+        navigationController?.pushViewController(makeSwiftUIDetailViewController(item: item), animated: true)
     }
 
     private func handle(_ action: FeedCell.Action, item: FeedItem) {

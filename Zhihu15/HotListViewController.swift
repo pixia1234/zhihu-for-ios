@@ -83,6 +83,6 @@ extension HotListViewController: UITableViewDelegate {
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         let hot = SampleData.hot[indexPath.row]
         let item = FeedItem(id: 1000 + hot.rank, kind: .question, author: "知乎热榜", authorRole: hot.category + " · " + hot.heat, avatarColor: .systemOrange, title: hot.title, excerpt: hot.summary, topic: hot.category, upvotes: 0, comments: 0, hasImage: false, imageColor: .clear)
-        navigationController?.pushViewController(DetailViewController(item: item), animated: true)
+        navigationController?.pushViewController(makeSwiftUIDetailViewController(item: item), animated: true)
     }
 }

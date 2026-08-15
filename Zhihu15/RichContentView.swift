@@ -10,8 +10,10 @@ import WebKit
 final class RichContentView: UIView, WKNavigationDelegate {
     private let webView: WKWebView
     private var heightConstraint: NSLayoutConstraint!
+    private var loadedMarkup: String?
 
     var onOpenURL: ((URL) -> Void)?
+    var onHeightChange: ((CGFloat) -> Void)?
 
     override init(frame: CGRect) {
         let configuration = WKWebViewConfiguration()
@@ -42,11 +44,14 @@ final class RichContentView: UIView, WKNavigationDelegate {
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
     func load(markup: String) {
+        guard loadedMarkup != markup else { return }
+        loadedMarkup = markup
         let html = RichContentHTML.document(for: markup)
         webView.loadHTMLString(html, baseURL: URL(string: "https://www.zhihu.com/"))
     }
 
     func clear() {
+        loadedMarkup = nil
         heightConstraint.constant = 1
         webView.loadHTMLString(RichContentHTML.document(for: ""), baseURL: URL(string: "https://www.zhihu.com/"))
     }
@@ -98,6 +103,7 @@ final class RichContentView: UIView, WKNavigationDelegate {
             let height = max(28, CGFloat(truncating: number))
             guard abs(self.heightConstraint.constant - height) > 0.5 else { return }
             self.heightConstraint.constant = height
+            self.onHeightChange?(height)
             self.invalidateIntrinsicContentSize()
             self.superview?.setNeedsLayout()
         }

@@ -317,9 +317,134 @@ struct SwiftUIFeedCard: View {
 
 struct SwiftUIDetailRoute: Identifiable { let id = UUID(); let item: FeedItem }
 
-final class SwiftUIDetailActionBridge: ObservableObject {
-    var openCanonicalURL: (() -> Void)?
-    var openVideo: (() -> Void)?
+final class SwiftUIDetailStore: ObservableObject {
+    let item: FeedItem
+    @Published private(set) var content: RemoteContent?
+    @Published private(set) var isLoading = false
+    @Published private(set) var collectionOptions: [ZhihuCollectionOption] = []
+    @Published private(set) var isLoadingCollections = false
+    @Published var upvotes: Int
+    @Published var isVoted: Bool
+    @Published var favoriteCount: Int
+    @Published var isFavorited: Bool
+    @Published var actionMessage: String?
+
+    private var didLoad = false
+    private var hasRemoteFavoriteCount = false
+
+    init(item: FeedItem) {
+        self.item = item
+        self.upvotes = item.upvotes
+        self.isVoted = item.isVoted
+        self.favoriteCount = item.favoriteCount
+        self.isFavorited = item.isFavorited
+    }
+
+    var title: String { content?.title ?? item.title }
+    var author: String { content?.author ?? item.author }
+    var authorHeadline: String { content?.authorHeadline ?? item.authorRole }
+    var bodyMarkup: String {
+        guard let markup = content?.bodyHTML, !markup.isEmpty else { return item.excerpt }
+        return markup
+    }
+    var imageURL: URL? { content?.imageURL ?? item.thumbnailURL }
+    var canonicalURL: URL? { content?.canonicalURL ?? RemoteContentRepository.canonicalURLForDisplay(item) }
+    var comments: Int { max(0, item.comments) }
+
+    func load() {
+        guard !didLoad else { return }
+        didLoad = true
+        isLoading = true
+        RemoteContentRepository.shared.fetch(item: item) { [weak self] result in
+            guard let self = self else { return }
+            self.isLoading = false
+            if case let .success(content) = result {
+                self.content = content
+                if let value = content.upvoteCount { self.upvotes = max(0, value) }
+                if let value = content.isVoted { self.isVoted = value }
+                if let value = content.favoriteCount {
+                    self.favoriteCount = max(0, value)
+                    self.hasRemoteFavoriteCount = true
+                }
+                if let value = content.isFavorited { self.isFavorited = value }
+            } else if case let .failure(error) = result {
+                self.actionMessage = error.localizedDescription
+            }
+            self.loadCollections()
+        }
+    }
+
+    func loadCollections() {
+        guard ZhihuAccountStore.shared.load()?.isLoggedIn == true,
+              item.contentID != nil,
+              !isLoadingCollections else { return }
+        isLoadingCollections = true
+        ZhihuActionRepository.shared.fetchCollections(for: item) { [weak self] result in
+            guard let self = self else { return }
+            self.isLoadingCollections = false
+            guard case let .success(options) = result else { return }
+            self.collectionOptions = options
+            self.isFavorited = options.contains(where: \.isSelected)
+            if !self.hasRemoteFavoriteCount {
+                self.favoriteCount = options.filter(\.isSelected).count
+            }
+        }
+    }
+
+    func vote(completion: @escaping (Result<Void, Error>) -> Void) {
+        guard ZhihuAccountStore.shared.load()?.isLoggedIn == true else {
+            completion(.failure(ZhihuSessionError.authenticationRequired))
+            return
+        }
+        guard let contentID = item.contentID, contentID > 0, item.kind != .question else {
+            completion(.failure(ZhihuSessionError.malformedPayload))
+            return
+        }
+        let requested = !isVoted
+        ZhihuActionRepository.shared.vote(contentID: contentID, kind: item.kind, up: requested) { [weak self] result in
+            guard let self = self else { return }
+            if case let .success(mutation) = result {
+                self.isVoted = mutation.isVoted
+                if let count = mutation.upvoteCount {
+                    self.upvotes = max(0, count)
+                } else {
+                    self.upvotes = max(0, self.upvotes + (mutation.isVoted ? 1 : -1))
+                }
+            }
+            completion(result.map { _ in () })
+        }
+    }
+
+    func follow(completion: @escaping (Result<Void, Error>) -> Void) {
+        guard ZhihuAccountStore.shared.load()?.isLoggedIn == true else {
+            completion(.failure(ZhihuSessionError.authenticationRequired))
+            return
+        }
+        let questionID = item.contentID ?? item.questionID ?? 0
+        guard questionID > 0 else {
+            completion(.failure(ZhihuSessionError.malformedPayload))
+            return
+        }
+        ZhihuActionRepository.shared.follow(questionID: questionID, following: true, completion: completion)
+    }
+
+    func setCollection(_ option: ZhihuCollectionOption, selected: Bool, completion: @escaping (Result<Void, Error>) -> Void) {
+        ZhihuActionRepository.shared.setCollection(selected, collectionID: option.id, for: item) { [weak self] result in
+            guard let self = self else { return }
+            if case .success = result {
+                self.collectionOptions = self.collectionOptions.map {
+                    ZhihuCollectionOption(id: $0.id, title: $0.title, isSelected: $0.id == option.id ? selected : $0.isSelected)
+                }
+                self.isFavorited = self.collectionOptions.contains(where: \.isSelected)
+                if !self.hasRemoteFavoriteCount {
+                    self.favoriteCount = self.collectionOptions.filter(\.isSelected).count
+                } else {
+                    self.favoriteCount = max(0, self.favoriteCount + (selected ? 1 : -1))
+                }
+            }
+            completion(result)
+        }
+    }
 }
 
 struct SwiftUIPushDetailLink: View {
@@ -346,57 +471,271 @@ struct SwiftUIPushDetailLink: View {
     @ViewBuilder
     private var destination: some View {
         if let route = route {
-            SwiftUIDetailContainer(item: route.item)
+            SwiftUIDetailView(item: route.item, restoresTabBarOnDisappear: false)
         } else {
             EmptyView()
         }
     }
 }
 
-private struct SwiftUIDetailContainer: View {
+struct SwiftUIDetailView: View {
     let item: FeedItem
-    @StateObject private var actionBridge = SwiftUIDetailActionBridge()
+    let restoresTabBarOnDisappear: Bool
+    @StateObject private var store: SwiftUIDetailStore
+    @State private var richContentHeight: CGFloat = 28
+    @State private var showLogin = false
+    @State private var showComments = false
+    @State private var showAnswers = false
+    @State private var showCollectionPicker = false
+    @State private var showVideo = false
+    @State private var showWebContent = false
+    @State private var webURL: URL?
+
+    init(item: FeedItem, restoresTabBarOnDisappear: Bool = true) {
+        self.item = item
+        self.restoresTabBarOnDisappear = restoresTabBarOnDisappear
+        _store = StateObject(wrappedValue: SwiftUIDetailStore(item: item))
+    }
 
     var body: some View {
-        UIKitDetailScreen(item: item, actionBridge: actionBridge)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItemGroup(placement: .navigationBarTrailing) {
-                    if item.kind == .video {
-                        Button { actionBridge.openVideo?() } label: {
-                            Image(systemName: "play.circle")
-                        }
-                        .accessibilityLabel("播放")
+        ScrollView {
+            VStack(alignment: .leading, spacing: 18) {
+                authorHeader
+                Text(store.title)
+                    .font(.system(size: 25, weight: .bold))
+                    .fixedSize(horizontal: false, vertical: true)
+                Divider()
+                if let imageURL = store.imageURL {
+                    CachedRemoteImage(url: imageURL)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 190)
+                        .background(Color(uiColor: item.imageColor), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                }
+                SwiftUIRichContentView(markup: store.bodyMarkup, height: $richContentHeight) { url in
+                    openContentURL(url)
+                }
+                .frame(maxWidth: .infinity)
+                .frame(minHeight: richContentHeight, alignment: .top)
+                Divider()
+                if item.kind == .question {
+                    Button { showAnswers = true } label: {
+                        Label("查看全部回答", systemImage: "chevron.right")
+                            .font(.headline)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    Button { actionBridge.openCanonicalURL?() } label: {
-                        Image(systemName: "safari")
+                    .buttonStyle(.plain)
+                    .foregroundColor(Color(red: 0.08, green: 0.38, blue: 0.86))
+                } else if item.kind == .answer, item.questionID != nil {
+                    Button { showAnswers = true } label: {
+                        Label("继续查看下一个回答", systemImage: "chevron.right")
+                            .font(.headline)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    .accessibilityLabel("在知乎打开")
+                    .buttonStyle(.plain)
+                    .foregroundColor(Color(red: 0.08, green: 0.38, blue: 0.86))
                 }
             }
+            .frame(maxWidth: 860, alignment: .leading)
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal, 20)
+            .padding(.top, 22)
+            .padding(.bottom, 20)
+        }
+        .background(Color(uiColor: .systemBackground).ignoresSafeArea())
+        .safeAreaInset(edge: .bottom, spacing: 0) { actionBar }
+        .navigationTitle(store.title)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItemGroup(placement: .navigationBarTrailing) {
+                if item.kind == .video {
+                    Button { showVideo = true } label: { Image(systemName: "play.circle") }
+                        .accessibilityLabel("播放")
+                }
+                Button {
+                    if let url = store.canonicalURL { openContentURL(url) }
+                } label: { Image(systemName: "safari") }
+                    .accessibilityLabel("在知乎打开")
+            }
+        }
+        .onAppear {
+            AppTheme.setTabBarHidden(true)
+            store.load()
+        }
+        .onDisappear {
+            if restoresTabBarOnDisappear { AppTheme.setTabBarHidden(false) }
+        }
+        .alert(isPresented: Binding(
+            get: { store.actionMessage != nil },
+            set: { if !$0 { store.actionMessage = nil } }
+        )) {
+            Alert(title: Text("知乎"), message: Text(store.actionMessage ?? ""), dismissButton: .default(Text("好的")))
+        }
+        .sheet(isPresented: $showLogin) { UIKitNavigationScreen { LoginViewController() } }
+        .sheet(isPresented: $showComments) { UIKitNavigationScreen { CommentsViewController(item: item) } }
+        .sheet(isPresented: $showAnswers) {
+            UIKitNavigationScreen { QuestionAnswersViewController(question: item, excludingAnswerID: item.kind == .answer ? item.contentID : nil) }
+        }
+        .sheet(isPresented: $showVideo) { UIKitNavigationScreen { VideoPlaybackViewController(item: item) } }
+        .sheet(isPresented: $showWebContent) {
+            if let webURL = webURL {
+                UIKitNavigationScreen { WebContentViewController(url: webURL, title: "知乎内容") }
+            }
+        }
+        .sheet(isPresented: $showCollectionPicker) { collectionPicker }
+    }
+
+    private var authorHeader: some View {
+        HStack(spacing: 10) {
+            CachedAvatar(url: item.avatarURL, name: store.author, color: item.avatarColor, size: 42)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(store.author).font(.headline)
+                Text(store.authorHeadline).font(.subheadline).foregroundColor(.secondary).lineLimit(2)
+            }
+            Spacer()
+        }
+    }
+
+    private var actionBar: some View {
+        HStack(spacing: 10) {
+            SwiftUIDetailActionButton(
+                title: item.kind == .question ? "关注" : "\(max(0, store.upvotes))",
+                image: item.kind == .question ? "person.badge.plus" : (store.isVoted ? "arrow.up.circle.fill" : "arrow.up")
+            ) {
+                if ZhihuAccountStore.shared.load()?.isLoggedIn != true {
+                    showLogin = true
+                } else if item.kind == .question {
+                    store.follow { result in
+                        switch result {
+                        case .success:
+                            store.actionMessage = "已关注这个问题"
+                        case let .failure(error):
+                            store.actionMessage = error.localizedDescription
+                        }
+                    }
+                } else {
+                    store.vote { result in
+                        if case let .failure(error) = result {
+                            if let sessionError = error as? ZhihuSessionError,
+                               case .authenticationRequired = sessionError {
+                                showLogin = true
+                            } else {
+                                store.actionMessage = error.localizedDescription
+                            }
+                        }
+                    }
+                }
+            }
+            SwiftUIDetailActionButton(title: "\(store.comments)", image: "bubble.left") {
+                showComments = true
+            }
+            SwiftUIDetailActionButton(title: "\(max(0, store.favoriteCount))", image: store.isFavorited ? "bookmark.fill" : "bookmark") {
+                if ZhihuAccountStore.shared.load()?.isLoggedIn != true {
+                    showLogin = true
+                } else {
+                    store.loadCollections()
+                    showCollectionPicker = true
+                }
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 7)
+        .background(.ultraThinMaterial)
+        .overlay(Divider(), alignment: .top)
+    }
+
+    private var collectionPicker: some View {
+        NavigationView {
+            Group {
+                if store.isLoadingCollections && store.collectionOptions.isEmpty {
+                    ProgressView("正在加载收藏夹").frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if store.collectionOptions.isEmpty {
+                    SwiftUIEmptyState(title: "暂无可用收藏夹", systemImage: "bookmark")
+                } else {
+                    List {
+                        ForEach(store.collectionOptions, id: \.id) { option in
+                            Button {
+                                store.setCollection(option, selected: !option.isSelected) { result in
+                                    if case let .failure(error) = result { store.actionMessage = error.localizedDescription }
+                                }
+                            } label: {
+                                HStack {
+                                    Text(option.title).foregroundColor(.primary)
+                                    Spacer()
+                                    Image(systemName: option.isSelected ? "checkmark.circle.fill" : "circle")
+                                        .foregroundColor(option.isSelected ? Color(red: 0.08, green: 0.38, blue: 0.86) : .secondary)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            .navigationTitle("收藏到")
+            .toolbar { ToolbarItem(placement: .navigationBarTrailing) { Button("完成") { showCollectionPicker = false } } }
+        }
+    }
+
+    private func openContentURL(_ url: URL) {
+        guard url.scheme?.lowercased() == "http" || url.scheme?.lowercased() == "https" else { return }
+        if url.host?.lowercased().hasSuffix("zhihu.com") == true {
+            webURL = url
+            showWebContent = true
+        } else {
+            UIApplication.shared.open(url)
+        }
     }
 }
 
-struct UIKitDetailScreen: UIViewControllerRepresentable {
-    let item: FeedItem
-    let actionBridge: SwiftUIDetailActionBridge?
+struct SwiftUIDetailActionButton: View {
+    let title: String
+    let image: String
+    let action: () -> Void
 
-    init(item: FeedItem, actionBridge: SwiftUIDetailActionBridge? = nil) {
-        self.item = item
-        self.actionBridge = actionBridge
+    var body: some View {
+        Button(action: action) {
+            Label(title, systemImage: image)
+                .font(.subheadline.weight(.medium))
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+                .frame(maxWidth: .infinity)
+                .frame(height: 42)
+                .background(Color(red: 0.08, green: 0.38, blue: 0.86).opacity(0.08), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .foregroundColor(Color(red: 0.08, green: 0.38, blue: 0.86))
+    }
+}
+
+struct SwiftUIRichContentView: UIViewRepresentable {
+    let markup: String
+    @Binding var height: CGFloat
+    let onOpenURL: (URL) -> Void
+
+    func makeUIView(context: Context) -> RichContentView {
+        let view = RichContentView()
+        let heightBinding = $height
+        view.onOpenURL = onOpenURL
+        view.onHeightChange = { value in
+            DispatchQueue.main.async { heightBinding.wrappedValue = max(28, value) }
+        }
+        view.load(markup: markup)
+        return view
     }
 
-    func makeUIViewController(context: Context) -> DetailViewController {
-        let viewController = DetailViewController(item: item, managesNavigationBar: actionBridge != nil)
-        actionBridge?.openCanonicalURL = { [weak viewController] in viewController?.openCanonicalURLFromNavigationHost() }
-        actionBridge?.openVideo = { [weak viewController] in viewController?.openVideoFromNavigationHost() }
-        return viewController
+    func updateUIView(_ uiView: RichContentView, context: Context) {
+        let heightBinding = $height
+        uiView.onOpenURL = onOpenURL
+        uiView.onHeightChange = { value in
+            DispatchQueue.main.async { heightBinding.wrappedValue = max(28, value) }
+        }
+        uiView.load(markup: markup)
     }
+}
 
-    func updateUIViewController(_ viewController: DetailViewController, context: Context) {
-        viewController.navigationItem.prompt = nil
-        viewController.navigationItem.largeTitleDisplayMode = .never
-    }
+func makeSwiftUIDetailViewController(item: FeedItem) -> UIViewController {
+    let controller = UIHostingController(rootView: SwiftUIDetailView(item: item))
+    controller.hidesBottomBarWhenPushed = true
+    return controller
 }
 
 struct CachedRemoteImage: View {

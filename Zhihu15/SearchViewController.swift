@@ -116,7 +116,7 @@ extension SearchViewController: UITableViewDataSource {
         cell.onAction = { [weak self] action in
             guard action == .comment, let self = self else { return }
             guard indexPath.row < self.results.count else { return }
-            self.navigationController?.pushViewController(DetailViewController(item: self.results[indexPath.row]), animated: true)
+            self.navigationController?.pushViewController(makeSwiftUIDetailViewController(item: self.results[indexPath.row]), animated: true)
         }
         return cell
     }
@@ -124,6 +124,6 @@ extension SearchViewController: UITableViewDataSource {
 
 extension SearchViewController: UITableViewDelegate {
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        navigationController?.pushViewController(DetailViewController(item: results[indexPath.row]), animated: true)
+        navigationController?.pushViewController(makeSwiftUIDetailViewController(item: results[indexPath.row]), animated: true)
     }
 }

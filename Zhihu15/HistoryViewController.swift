@@ -44,6 +44,6 @@ extension HistoryViewController: UITableViewDataSource {
 
 extension HistoryViewController: UITableViewDelegate {
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        navigationController?.pushViewController(DetailViewController(item: items[indexPath.row]), animated: true)
+        navigationController?.pushViewController(makeSwiftUIDetailViewController(item: items[indexPath.row]), animated: true)
     }
 }
