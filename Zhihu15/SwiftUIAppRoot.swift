@@ -15,10 +15,6 @@ struct SwiftUIAppRootView: View {
             NavigationView { SwiftUIProfileView() }
                 .navigationViewStyle(StackNavigationViewStyle())
                 .tabItem { Label("我的", systemImage: "person.crop.circle") }
-
-            NavigationView { SwiftUISearchView() }
-                .navigationViewStyle(StackNavigationViewStyle())
-                .tabItem { Label("搜索", systemImage: "magnifyingglass") }
         }
         .accentColor(Color(red: 0.08, green: 0.38, blue: 0.86))
     }
@@ -28,23 +24,31 @@ final class SwiftUIFeedStore: ObservableObject {
     @Published var channel: HomeChannel = .recommendation
     @Published private(set) var items: [FeedItem] = SampleData.recommendations
     @Published private(set) var isLoading = false
+    @Published private(set) var isLoadingMore = false
+    @Published private(set) var hasLoaded = false
+    @Published private(set) var canLoadMore = false
     @Published var errorMessage: String?
     private var locallyVotedItemIDs = Set<Int>()
+    private var nextPageURL: URL?
 
     func load(channel: HomeChannel? = nil) {
         let requested = channel ?? self.channel
         self.channel = requested
-        guard !isLoading else { return }
+        guard !isLoading, !isLoadingMore else { return }
         isLoading = true
+        hasLoaded = false
+        nextPageURL = nil
+        canLoadMore = false
         errorMessage = nil
-        RemoteFeedRepository.shared.fetch(channel: requested) { [weak self] result in
+        RemoteFeedRepository.shared.fetchPage(channel: requested) { [weak self] result in
             guard let self = self else { return }
             self.isLoading = false
+            self.hasLoaded = true
             switch result {
-            case let .success(items) where !items.isEmpty:
-                self.items = items
-            case let .success(items):
-                self.items = items
+            case let .success(page):
+                self.items = page.items
+                self.nextPageURL = page.nextURL
+                self.canLoadMore = !page.isEnd && page.nextURL != nil
             case let .failure(error):
                 self.errorMessage = error.localizedDescription
             }
@@ -53,14 +57,46 @@ final class SwiftUIFeedStore: ObservableObject {
 
     func refresh() async {
         await withCheckedContinuation { continuation in
+            guard !isLoading, !isLoadingMore else {
+                continuation.resume()
+                return
+            }
             let requested = channel
             isLoading = true
-            RemoteFeedRepository.shared.fetch(channel: requested) { [weak self] result in
+            nextPageURL = nil
+            canLoadMore = false
+            RemoteFeedRepository.shared.fetchPage(channel: requested) { [weak self] result in
                 guard let self = self else { continuation.resume(); return }
                 self.isLoading = false
-                if case let .success(items) = result, !items.isEmpty { self.items = items }
-                if case let .failure(error) = result { self.errorMessage = error.localizedDescription }
+                self.hasLoaded = true
+                switch result {
+                case let .success(page):
+                    self.items = page.items
+                    self.nextPageURL = page.nextURL
+                    self.canLoadMore = !page.isEnd && page.nextURL != nil
+                    self.errorMessage = nil
+                case let .failure(error):
+                    self.errorMessage = error.localizedDescription
+                }
                 continuation.resume()
+            }
+        }
+    }
+
+    func loadMore() {
+        guard hasLoaded, canLoadMore, !isLoading, !isLoadingMore, let nextPageURL else { return }
+        isLoadingMore = true
+        RemoteFeedRepository.shared.fetchPage(channel: channel, nextURL: nextPageURL) { [weak self] result in
+            guard let self = self else { return }
+            self.isLoadingMore = false
+            switch result {
+            case let .success(page):
+                let existingIDs = Set(self.items.map(\.id))
+                self.items.append(contentsOf: page.items.filter { !existingIDs.contains($0.id) })
+                self.nextPageURL = page.nextURL
+                self.canLoadMore = !page.isEnd && page.nextURL != nil
+            case let .failure(error):
+                self.errorMessage = error.localizedDescription
             }
         }
     }
@@ -92,9 +128,11 @@ struct SwiftUIHomeView: View {
     @State private var detailRoute: SwiftUIDetailRoute?
     @State private var showMessages = false
     @State private var showCreation = false
+    @State private var showSearch = false
     @State private var showLogin = false
     @State private var actionMessage: String?
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    private let autoRefreshTimer = Timer.publish(every: 300, on: .main, in: .common).autoconnect()
 
     var body: some View {
         ScrollView {
@@ -126,6 +164,12 @@ struct SwiftUIHomeView: View {
                             }
                         }
                     )
+                    .onAppear {
+                        if item.id == store.items.last?.id { store.loadMore() }
+                    }
+                }
+                if store.isLoadingMore {
+                    ProgressView("正在加载更多").frame(maxWidth: .infinity).padding(.vertical, 12)
                 }
                 if !store.isLoading && store.items.isEmpty && store.errorMessage == nil {
                     SwiftUIEmptyState(title: "暂时没有内容", systemImage: "tray")
@@ -141,13 +185,24 @@ struct SwiftUIHomeView: View {
         .navigationTitle("知乎")
         .toolbar {
             ToolbarItemGroup(placement: .navigationBarTrailing) {
+                Button { showSearch = true } label: { Image(systemName: "magnifyingglass") }
+                    .accessibilityLabel("搜索")
+                Button { Task { await store.refresh() } } label: { Image(systemName: "arrow.clockwise") }
+                    .disabled(store.isLoading)
+                    .accessibilityLabel("刷新")
                 Button { showCreation = true } label: { Image(systemName: "square.and.pencil") }
                     .accessibilityLabel("开始创作")
                 Button { showMessages = true } label: { Image(systemName: "bell") }
                     .accessibilityLabel("知乎消息")
             }
         }
-        .onAppear { if store.items.isEmpty { store.load() } }
+        .onAppear { if !store.hasLoaded { store.load() } }
+        .onReceive(autoRefreshTimer) { _ in
+            Task { await store.refresh() }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+            Task { await store.refresh() }
+        }
         .sheet(item: $detailRoute) { route in
             UIKitNavigationScreen { DetailViewController(item: route.item) }
         }
@@ -156,6 +211,9 @@ struct SwiftUIHomeView: View {
         }
         .sheet(isPresented: $showCreation) {
             UIKitNavigationScreen { RichTextEditorViewController(mode: .pin) }
+        }
+        .sheet(isPresented: $showSearch) {
+            UIKitNavigationScreen { SearchViewController() }
         }
         .sheet(isPresented: $showLogin) {
             UIKitNavigationScreen { LoginViewController() }
@@ -182,11 +240,14 @@ struct SwiftUIHomeView: View {
                 }
                 Spacer()
             }
-            HStack(spacing: 8) {
-                Image(systemName: "magnifyingglass").foregroundColor(.secondary)
-                Text("搜索问题、话题或用户").foregroundColor(.secondary)
-                Spacer()
+            Button { showSearch = true } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "magnifyingglass").foregroundColor(.secondary)
+                    Text("搜索问题、话题或用户").foregroundColor(.secondary)
+                    Spacer()
+                }
             }
+            .buttonStyle(.plain)
             .padding(.horizontal, 14).frame(height: 44)
             .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             Picker("内容频道", selection: Binding(get: { store.channel.rawValue }, set: { store.load(channel: HomeChannel(rawValue: $0) ?? .recommendation) })) {

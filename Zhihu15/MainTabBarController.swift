@@ -7,8 +7,7 @@ final class MainTabBarController: UITabBarController {
         viewControllers = [
             navigationController(root: HomeViewController(), title: "首页", image: "house", selectedImage: "house.fill"),
             navigationController(root: CollectionsViewController(), title: "收藏", image: "bookmark", selectedImage: "bookmark.fill"),
-            navigationController(root: ProfileViewController(), title: "账号", image: "person.crop.circle", selectedImage: "person.crop.circle.fill"),
-            navigationController(root: SearchViewController(), title: "搜索", image: "magnifyingglass", selectedImage: "magnifyingglass")
+            navigationController(root: ProfileViewController(), title: "账号", image: "person.crop.circle", selectedImage: "person.crop.circle.fill")
         ]
         selectedIndex = 0
     }

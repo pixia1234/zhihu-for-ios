@@ -29,4 +29,11 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         guard let window = window else { return }
         DispatchQueue.main.async { AppLockCoordinator.shared.presentIfNeeded(in: window) }
     }
+
+    func windowScene(
+        _ windowScene: UIWindowScene,
+        supportedInterfaceOrientationsFor window: UIWindow?
+    ) -> UIInterfaceOrientationMask {
+        .all
+    }
 }

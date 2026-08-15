@@ -7,6 +7,9 @@ final class HomeViewController: UIViewController {
     private let refreshControl = UIRefreshControl()
     private var items = SampleData.recommendations
     private var locallyVotedItemIDs = Set<Int>()
+    private var nextPageURL: URL?
+    private var isLoadingMore = false
+    private var autoRefreshTimer: Timer?
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -20,6 +23,23 @@ final class HomeViewController: UIViewController {
         setupHeader()
         loadRemote(channel: .recommendation)
     }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        autoRefreshTimer?.invalidate()
+        autoRefreshTimer = Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { [weak self] _ in
+            guard let self = self else { return }
+            self.loadRemote(channel: HomeChannel(rawValue: self.channelControl.selectedSegmentIndex) ?? .recommendation)
+        }
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        autoRefreshTimer?.invalidate()
+        autoRefreshTimer = nil
+    }
+
+    deinit { autoRefreshTimer?.invalidate() }
 
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
@@ -102,6 +122,7 @@ final class HomeViewController: UIViewController {
 
     @objc private func channelChanged() {
         items = SampleData.feedItems(for: channelControl.selectedSegmentIndex)
+        nextPageURL = nil
         headerSubtitle.text = channelControl.selectedSegmentIndex == 2 ? "热榜 · 实时更新的热门讨论" : "为你推荐 · 内容每次打开都会重新整理"
         tableView.reloadData()
         tableView.setContentOffset(.zero, animated: false)
@@ -113,15 +134,33 @@ final class HomeViewController: UIViewController {
     }
 
     private func loadRemote(channel: HomeChannel, endRefreshing: Bool = false) {
-        RemoteFeedRepository.shared.fetch(channel: channel) { [weak self] result in
+        nextPageURL = nil
+        RemoteFeedRepository.shared.fetchPage(channel: channel) { [weak self] result in
             guard let self = self else { return }
             if endRefreshing { self.refreshControl.endRefreshing() }
             guard self.channelControl.selectedSegmentIndex == channel.rawValue else { return }
-            if case let .success(remoteItems) = result, !remoteItems.isEmpty {
-                self.items = remoteItems
+            if case let .success(page) = result, !page.items.isEmpty {
+                self.items = page.items
+                self.nextPageURL = page.nextURL
                 self.headerSubtitle.text = channel == .hot ? "热榜 · 实时更新的热门讨论" : "知乎实时内容 · 已启用本地图片缓存"
                 self.tableView.reloadData()
             }
+        }
+    }
+
+    private func loadMore() {
+        guard !isLoadingMore,
+              let nextPageURL,
+              let channel = HomeChannel(rawValue: channelControl.selectedSegmentIndex) else { return }
+        isLoadingMore = true
+        RemoteFeedRepository.shared.fetchPage(channel: channel, nextURL: nextPageURL) { [weak self] result in
+            guard let self = self else { return }
+            self.isLoadingMore = false
+            guard case let .success(page) = result else { return }
+            let existingIDs = Set(self.items.map(\.id))
+            self.items.append(contentsOf: page.items.filter { !existingIDs.contains($0.id) })
+            self.nextPageURL = page.nextURL
+            self.tableView.reloadData()
         }
     }
 
@@ -238,6 +277,10 @@ extension HomeViewController: UITableViewDataSource {
 }
 
 extension HomeViewController: UITableViewDelegate {
+    func tableView(_ tableView: UITableView, willDisplay cell: UITableViewCell, forRowAt indexPath: IndexPath) {
+        if indexPath.row >= items.count - 3 { loadMore() }
+    }
+
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         showDetail(for: items[indexPath.row])
     }

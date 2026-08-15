@@ -10,6 +10,13 @@ final class SearchViewController: UIViewController {
         super.viewDidLoad()
         title = "搜索"
         view.backgroundColor = .systemGroupedBackground
+        if navigationController?.presentingViewController != nil {
+            navigationItem.leftBarButtonItem = UIBarButtonItem(
+                barButtonSystemItem: .close,
+                target: self,
+                action: #selector(closeSearch)
+            )
+        }
         searchController.searchResultsUpdater = self
         searchController.obscuresBackgroundDuringPresentation = false
         searchController.searchBar.placeholder = "搜索问题、话题或用户"
@@ -34,6 +41,10 @@ final class SearchViewController: UIViewController {
             tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
         updateEmptyState()
+    }
+
+    @objc private func closeSearch() {
+        dismiss(animated: true)
     }
 
     override func viewDidAppear(_ animated: Bool) {

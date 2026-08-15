@@ -22,6 +22,8 @@ final class RichContentView: UIView, WKNavigationDelegate {
         backgroundColor = .clear
         webView.backgroundColor = .clear
         webView.isOpaque = false
+        webView.customUserAgent = ZhihuAccountStore.shared.load()?.userAgent
+            ?? "Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148"
         webView.navigationDelegate = self
         webView.scrollView.isScrollEnabled = false
         webView.scrollView.contentInset = .zero
@@ -138,7 +140,7 @@ private enum RichContentHTML {
         html = replace(html, pattern: #"(?i)http://((?:pic|static|zhimg)[^\"'\s>]+)"#, with: "https://$1")
         // Zhihu occasionally sends a lazy-loading source in data-original or
         // data-src. When no normal src exists this makes the image visible.
-        html = replace(html, pattern: #"(?i)<img([^>]*?)data-(?:original|src)\s*=\s*[\"']([^\"']+)[\"']([^>]*)>"#, with: "<img$1 src=\"$2\"$3>")
+        html = replace(html, pattern: #"(?i)<img([^>]*?)data-(?:original|src|actualsrc|lazy-src)\s*=\s*[\"']([^\"']+)[\"']([^>]*)>"#, with: "<img$1 src=\"$2\"$3>")
         return html
     }
 
