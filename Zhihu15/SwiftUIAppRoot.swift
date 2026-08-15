@@ -581,7 +581,11 @@ struct SwiftUIDetailView: View {
         .sheet(isPresented: $showLogin) { UIKitNavigationScreen { LoginViewController() } }
         .sheet(isPresented: $showComments) { UIKitNavigationScreen { CommentsViewController(item: item) } }
         .sheet(isPresented: $showAnswersSheet) {
-            UIKitNavigationScreen { QuestionAnswersViewController(question: item, excludingAnswerID: item.kind == .answer ? item.contentID : nil) }
+            if let question = answersQuestion {
+                UIKitNavigationScreen { QuestionAnswersViewController(question: question, excludingAnswerID: item.kind == .answer ? item.contentID : nil) }
+            } else {
+                SwiftUIEmptyState(title: "缺少问题 ID", systemImage: "questionmark.circle")
+            }
         }
         .sheet(isPresented: $showVideo) { UIKitNavigationScreen { VideoPlaybackViewController(item: item) } }
         .sheet(isPresented: $showWebContent) {
@@ -593,8 +597,12 @@ struct SwiftUIDetailView: View {
     }
 
     private func openAnswers() {
+        guard let question = answersQuestion else {
+            store.actionMessage = "缺少问题 ID，暂时无法加载全部回答"
+            return
+        }
         let controller = QuestionAnswersViewController(
-            question: item,
+            question: question,
             excludingAnswerID: item.kind == .answer ? item.contentID : nil
         )
         controller.hidesBottomBarWhenPushed = true
@@ -603,6 +611,29 @@ struct SwiftUIDetailView: View {
         } else {
             showAnswersSheet = true
         }
+    }
+
+    private var answersQuestion: FeedItem? {
+        guard item.kind == .answer else {
+            guard let contentID = item.contentID ?? item.questionID, contentID > 0 else { return nil }
+            return item
+        }
+        guard let questionID = item.questionID, questionID > 0 else { return nil }
+        return FeedItem(
+            id: Int(questionID),
+            kind: .question,
+            author: "知乎问题",
+            authorRole: "",
+            avatarColor: AppTheme.zhihuBlue,
+            title: store.title,
+            excerpt: "",
+            topic: item.topic,
+            upvotes: 0,
+            comments: 0,
+            hasImage: false,
+            imageColor: AppTheme.zhihuBlue.withAlphaComponent(0.08),
+            contentID: questionID
+        )
     }
 
     private var authorHeader: some View {

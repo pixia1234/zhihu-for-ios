@@ -13,7 +13,14 @@ final class QuestionAnswersRepository {
     init(client: ZhihuAPIClient) { self.client = client }
 
     func fetch(question: FeedItem, nextURL: URL? = nil, completion: @escaping (Result<QuestionAnswersPage, Error>) -> Void) {
-        let questionID = question.contentID ?? question.questionID ?? 0
+        // An answer's contentID is the answer ID, not the question ID.
+        // When opening "全部回答" from an answer detail, questionID must win.
+        let questionID: Int64
+        if question.kind == .answer {
+            questionID = question.questionID ?? question.contentID ?? 0
+        } else {
+            questionID = question.contentID ?? question.questionID ?? 0
+        }
         guard questionID > 0 else {
             completion(.failure(ZhihuSessionError.malformedPayload))
             return
