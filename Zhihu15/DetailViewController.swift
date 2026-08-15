@@ -39,6 +39,7 @@ final class DetailViewController: UIViewController {
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        BrowsingHistoryStore.shared.record(item)
         HandoffCoordinator.shared.start(item: item)
     }
 
@@ -206,17 +207,19 @@ final class DetailViewController: UIViewController {
             contentStack.addArrangedSubview(answersButton)
         }
 
-        let relatedTitle = UILabel()
-        relatedTitle.text = "相关内容"
-        relatedTitle.font = .systemFont(ofSize: 19, weight: .semibold)
-        contentStack.addArrangedSubview(relatedTitle)
-
-        let related = UILabel()
-        related.text = "继续阅读与“\(item.topic)”相关的优质回答，发现更多不同角度的思考。"
-        related.textColor = AppTheme.secondaryText
-        related.font = .systemFont(ofSize: 16)
-        related.numberOfLines = 0
-        contentStack.addArrangedSubview(related)
+        if item.kind == .answer, questionItemForAnswer() != nil {
+            let nextAnswerButton = UIButton(type: .system)
+            nextAnswerButton.setTitle("继续查看下一个回答", for: .normal)
+            nextAnswerButton.setImage(UIImage(systemName: "chevron.right"), for: .normal)
+            nextAnswerButton.semanticContentAttribute = .forceRightToLeft
+            nextAnswerButton.contentHorizontalAlignment = .left
+            nextAnswerButton.tintColor = AppTheme.zhihuBlue
+            nextAnswerButton.setTitleColor(AppTheme.zhihuBlue, for: .normal)
+            nextAnswerButton.titleLabel?.font = .systemFont(ofSize: 16, weight: .semibold)
+            nextAnswerButton.contentEdgeInsets = UIEdgeInsets(top: 4, left: 0, bottom: 4, right: 0)
+            nextAnswerButton.addTarget(self, action: #selector(openRelatedAnswers), for: .touchUpInside)
+            contentStack.addArrangedSubview(nextAnswerButton)
+        }
     }
 
     private func makeDivider() -> UIView {
@@ -224,6 +227,25 @@ final class DetailViewController: UIViewController {
         divider.backgroundColor = AppTheme.border
         divider.heightAnchor.constraint(equalToConstant: 1).isActive = true
         return divider
+    }
+
+    private func questionItemForAnswer() -> FeedItem? {
+        guard item.kind == .answer, let questionID = item.questionID, questionID > 0 else { return nil }
+        return FeedItem(
+            id: Int(questionID),
+            kind: .question,
+            author: "知乎问题",
+            authorRole: "",
+            avatarColor: AppTheme.zhihuBlue,
+            title: item.title,
+            excerpt: "",
+            topic: item.topic,
+            upvotes: 0,
+            comments: 0,
+            hasImage: false,
+            imageColor: AppTheme.zhihuBlue.withAlphaComponent(0.08),
+            contentID: questionID
+        )
     }
 
     private func loadRemoteContent() {
@@ -260,6 +282,11 @@ final class DetailViewController: UIViewController {
             return
         }
         push(QuestionAnswersViewController(question: item))
+    }
+
+    @objc private func openRelatedAnswers() {
+        guard let question = questionItemForAnswer() else { return }
+        push(QuestionAnswersViewController(question: question, excludingAnswerID: item.contentID))
     }
 
     @objc private func openVideo() {

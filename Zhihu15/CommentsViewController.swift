@@ -4,7 +4,7 @@ struct RemoteComment {
     let id: String
     let author: String
     let content: String
-    let likeCount: Int
+    var likeCount: Int
 }
 
 final class CommentsViewController: UIViewController {
@@ -51,10 +51,14 @@ final class CommentsViewController: UIViewController {
             guard let self = self, case let .success(data) = result,
                   let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                   let values = root["data"] as? [[String: Any]] else { return }
+            self.likedCommentIDs.removeAll()
             self.comments = values.compactMap { value in
                 guard let commentID = Self.string(value["id"]), !commentID.isEmpty else { return nil }
                 let author = value["author"] as? [String: Any]
-                return RemoteComment(id: commentID, author: Self.string(author?["name"]) ?? "知乎用户", content: Self.plainText(Self.string(value["content"]) ?? ""), likeCount: Self.int(value["like_count"]) ?? 0)
+                let isLiked = Self.bool(value["is_liked"] ?? value["isLiked"] ?? value["liked"]) ?? false
+                if isLiked { self.likedCommentIDs.insert(commentID) }
+                let likeCount = Self.int(value["like_count"] ?? value["vote_count"] ?? value["voteup_count"]) ?? 0
+                return RemoteComment(id: commentID, author: Self.string(author?["name"]) ?? "知乎用户", content: Self.plainText(Self.string(value["content"]) ?? ""), likeCount: max(0, likeCount))
             }
             self.tableView.reloadData()
         }
@@ -85,6 +89,9 @@ final class CommentsViewController: UIViewController {
             switch result {
             case .success:
                 if liked { self.likedCommentIDs.insert(comment.id) } else { self.likedCommentIDs.remove(comment.id) }
+                if let index = self.comments.firstIndex(where: { $0.id == comment.id }) {
+                    self.comments[index].likeCount = max(0, self.comments[index].likeCount + (liked ? 1 : -1))
+                }
                 self.tableView.reloadData()
             case let .failure(error):
                 let alert = UIAlertController(title: "评论操作失败", message: error.localizedDescription, preferredStyle: .alert)
@@ -94,8 +101,28 @@ final class CommentsViewController: UIViewController {
         }
     }
 
-    private static func string(_ value: Any?) -> String? { value as? String }
-    private static func int(_ value: Any?) -> Int? { (value as? NSNumber)?.intValue }
+    private static func string(_ value: Any?) -> String? {
+        if let value = value as? String { return value }
+        if let value = value as? NSNumber { return value.stringValue }
+        return nil
+    }
+
+    private static func int(_ value: Any?) -> Int? {
+        if let value = value as? Int { return value }
+        if let value = value as? NSNumber { return value.intValue }
+        if let value = value as? String {
+            let normalized = value.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: ",", with: "")
+            if let integer = Int(normalized) { return integer }
+            if let decimal = Double(normalized) { return Int(decimal) }
+        }
+        return nil
+    }
+    private static func bool(_ value: Any?) -> Bool? {
+        if let value = value as? Bool { return value }
+        if let value = value as? NSNumber { return value.boolValue }
+        if let value = value as? String { return value == "true" || value == "1" }
+        return nil
+    }
     private static func plainText(_ html: String) -> String {
         guard html.contains("<"), let data = html.data(using: .utf8), let attributed = try? NSAttributedString(data: data, options: [.documentType: NSAttributedString.DocumentType.html, .characterEncoding: String.Encoding.utf8.rawValue], documentAttributes: nil) else { return html }
         return attributed.string
@@ -147,7 +174,7 @@ final class CommentCell: UITableViewCell {
     func configure(_ comment: RemoteComment, liked: Bool) {
         authorLabel.text = comment.author
         contentLabel.text = comment.content
-        likeLabel.text = comment.likeCount > 0 ? "\(comment.likeCount) 赞同" : "暂无赞同"
+        likeLabel.text = "\(max(0, comment.likeCount)) 赞同"
         likeButton.setTitle(liked ? "已赞同" : "赞同", for: .normal)
         likeButton.setImage(UIImage(systemName: liked ? "hand.thumbsup.fill" : "hand.thumbsup"), for: .normal)
         likeButton.tintColor = liked ? AppTheme.zhihuBlue : AppTheme.secondaryText

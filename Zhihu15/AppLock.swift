@@ -5,31 +5,55 @@ final class AppLockCoordinator {
     static let shared = AppLockCoordinator()
     private let defaults = UserDefaults.standard
     private var lockController: AppLockViewController?
+    // A previously enabled lock must protect a cold launch as well. Toggling
+    // the setting explicitly resets this to false until the next background
+    // transition.
+    private var requiresUnlock = true
+    private var isAuthenticating = false
 
     var isEnabled: Bool { defaults.bool(forKey: "zhihu15.app-lock-enabled") }
 
     func setEnabled(_ enabled: Bool) {
         defaults.set(enabled, forKey: "zhihu15.app-lock-enabled")
-        if !enabled { lockController?.dismiss(animated: false); lockController = nil }
+        requiresUnlock = false
+        isAuthenticating = false
+        if !enabled {
+            lockController?.dismiss(animated: false)
+            lockController = nil
+        }
     }
 
     func lock() {
-        guard isEnabled else { return }
-        lockController = nil
+        guard isEnabled else {
+            requiresUnlock = false
+            return
+        }
+        // LocalAuthentication temporarily makes the scene inactive. Keep the
+        // existing lock screen and authentication state instead of clearing
+        // the controller and presenting another lock screen in a loop.
+        requiresUnlock = true
     }
 
     func presentIfNeeded(in window: UIWindow) {
-        guard isEnabled, let root = window.rootViewController, lockController == nil else { return }
+        guard isEnabled, requiresUnlock, !isAuthenticating,
+              window.windowScene?.activationState == .foregroundActive,
+              let root = window.rootViewController,
+              lockController == nil,
+              let presenter = topViewController(from: root),
+              presenter.viewIfLoaded?.window != nil else { return }
         let controller = AppLockViewController()
         controller.modalPresentationStyle = .fullScreen
         lockController = controller
-        root.present(controller, animated: false)
+        presenter.present(controller, animated: false)
     }
 
     func unlock(from controller: UIViewController) {
+        guard !isAuthenticating else { return }
+        isAuthenticating = true
         let context = LAContext()
         var error: NSError?
         guard context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error) else {
+            isAuthenticating = false
             controller.showSimpleAlert(title: "无法解锁", message: error?.localizedDescription ?? "设备身份验证不可用")
             return
         }
@@ -37,17 +61,38 @@ final class AppLockCoordinator {
             DispatchQueue.main.async {
                 guard let self = self, let controller = controller else { return }
                 if success {
+                    self.isAuthenticating = false
+                    self.requiresUnlock = false
                     self.lockController = nil
                     controller.dismiss(animated: false)
                 } else {
+                    self.isAuthenticating = false
                     controller.showSimpleAlert(title: "解锁失败", message: error?.localizedDescription ?? "请重试")
                 }
             }
         }
     }
+
+    private func topViewController(from root: UIViewController) -> UIViewController? {
+        if let presented = root.presentedViewController, !presented.isBeingDismissed {
+            return topViewController(from: presented)
+        }
+        if let navigation = root as? UINavigationController, let visible = navigation.visibleViewController {
+            return topViewController(from: visible)
+        }
+        if let tab = root as? UITabBarController, let selected = tab.selectedViewController {
+            return topViewController(from: selected)
+        }
+        if let split = root as? UISplitViewController, let last = split.viewControllers.last {
+            return topViewController(from: last)
+        }
+        return root
+    }
 }
 
 final class AppLockViewController: UIViewController {
+    private var hasStartedAuthentication = false
+
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .systemBackground
@@ -86,6 +131,8 @@ final class AppLockViewController: UIViewController {
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        guard !hasStartedAuthentication else { return }
+        hasStartedAuthentication = true
         unlock()
     }
 

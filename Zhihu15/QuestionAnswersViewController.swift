@@ -2,6 +2,7 @@ import UIKit
 
 final class QuestionAnswersViewController: UIViewController {
     private let question: FeedItem
+    private let excludingAnswerID: Int64?
     private let tableView = UITableView(frame: .zero, style: .plain)
     private let refreshControl = UIRefreshControl()
     private var answers: [FeedItem] = []
@@ -9,8 +10,9 @@ final class QuestionAnswersViewController: UIViewController {
     private var isLoading = false
     private var isLoadingMore = false
 
-    init(question: FeedItem) {
+    init(question: FeedItem, excludingAnswerID: Int64? = nil) {
         self.question = question
+        self.excludingAnswerID = excludingAnswerID
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -60,9 +62,12 @@ final class QuestionAnswersViewController: UIViewController {
             if refreshing { self.refreshControl.endRefreshing() }
             switch result {
             case let .success(page):
-                self.answers = page.items
+                self.answers = page.items.filter { $0.contentID != self.excludingAnswerID }
                 self.nextPageURL = page.nextURL
                 self.tableView.reloadData()
+                if self.answers.isEmpty, self.nextPageURL != nil {
+                    self.loadMore()
+                }
             case let .failure(error):
                 self.showError(error)
             }
@@ -77,7 +82,7 @@ final class QuestionAnswersViewController: UIViewController {
             self.isLoadingMore = false
             guard case let .success(page) = result else { return }
             let existingIDs = Set(self.answers.map(\.id))
-            self.answers.append(contentsOf: page.items.filter { !existingIDs.contains($0.id) })
+            self.answers.append(contentsOf: page.items.filter { $0.contentID != self.excludingAnswerID && !existingIDs.contains($0.id) })
             self.nextPageURL = page.nextURL
             self.tableView.reloadData()
         }

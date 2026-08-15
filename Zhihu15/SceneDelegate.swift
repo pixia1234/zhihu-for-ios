@@ -29,7 +29,15 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     func sceneDidBecomeActive(_ scene: UIScene) {
         guard let window = window else { return }
-        DispatchQueue.main.async { AppLockCoordinator.shared.presentIfNeeded(in: window) }
+        DispatchQueue.main.async {
+            AppLockCoordinator.shared.presentIfNeeded(in: window)
+        }
+        // The root SwiftUI controller may finish attaching its view just
+        // after sceneDidBecomeActive. Retry once after the presentation
+        // context is ready; AppLockCoordinator's state guards prevent a loop.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+            AppLockCoordinator.shared.presentIfNeeded(in: window)
+        }
     }
 
     func scene(_ scene: UIScene, continue userActivity: NSUserActivity) {
