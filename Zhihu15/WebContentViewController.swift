@@ -1,7 +1,7 @@
 import UIKit
 import WebKit
 
-final class WebContentViewController: UIViewController {
+final class WebContentViewController: UIViewController, WKNavigationDelegate {
     private let url: URL
     private let webView = WKWebView(frame: .zero)
     private let progressView = UIProgressView(progressViewStyle: .default)

@@ -121,7 +121,7 @@ private enum RichContentHTML {
         pre { overflow-x: auto; padding: 0.75em; border-radius: 8px; background: rgba(128,128,128,0.12); white-space: pre-wrap; }
         ul, ol { padding-left: 1.45em; margin-top: 0.2em; margin-bottom: 0.9em; }
         hr { border: 0; border-top: 1px solid rgba(128,128,128,0.3); margin: 1em 0; }
-        </style></head><body>(content)</body></html>
+        </style></head><body>\(content)</body></html>
         """
     }
 
