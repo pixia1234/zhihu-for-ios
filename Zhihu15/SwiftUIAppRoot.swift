@@ -4,10 +4,13 @@ import UIKit
 struct SwiftUIAppRootView: View {
     @State private var selectedTab = 0
     @State private var detailRoute: SwiftUIDetailRoute?
+    @State private var showMessages = false
+    @State private var showCreation = false
+    @State private var showSearch = false
 
     var body: some View {
         NavigationView {
-            TabView(selection: $selectedTab) {
+            TabView(selection: tabSelection) {
                 SwiftUIHomeView()
                     .tabItem { Label("首页", systemImage: "house") }
                     .tag(0)
@@ -22,6 +25,31 @@ struct SwiftUIAppRootView: View {
             }
             .accentColor(Color(red: 0.08, green: 0.38, blue: 0.86))
             .background(SwiftUIHandoffDetailLink(route: $detailRoute))
+            .toolbar {
+                if selectedTab == 0 {
+                    ToolbarItemGroup(placement: .navigationBarTrailing) {
+                        Button { showSearch = true } label: { Image(systemName: "magnifyingglass") }
+                            .accessibilityLabel("搜索")
+                        Button {
+                            NotificationCenter.default.post(name: .zhihuRefreshHome, object: nil)
+                        } label: { Image(systemName: "arrow.clockwise") }
+                            .accessibilityLabel("刷新")
+                        Button { showCreation = true } label: { Image(systemName: "square.and.pencil") }
+                            .accessibilityLabel("开始创作")
+                        Button { showMessages = true } label: { Image(systemName: "bell") }
+                            .accessibilityLabel("知乎消息")
+                    }
+                }
+            }
+            .sheet(isPresented: $showMessages) {
+                UIKitNavigationScreen { MessagesViewController() }
+            }
+            .sheet(isPresented: $showCreation) {
+                UIKitNavigationScreen { RichTextEditorViewController(mode: .pin) }
+            }
+            .sheet(isPresented: $showSearch) {
+                UIKitNavigationScreen { SearchViewController() }
+            }
         }
         .navigationViewStyle(StackNavigationViewStyle())
         .onReceive(NotificationCenter.default.publisher(for: .zhihuHandoffOpenItem)) { notification in
@@ -30,6 +58,16 @@ struct SwiftUIAppRootView: View {
                 detailRoute = SwiftUIDetailRoute(item: item)
             }
         }
+    }
+
+    private var tabSelection: Binding<Int> {
+        Binding(
+            get: { selectedTab },
+            set: { value in
+                selectedTab = value
+                NotificationCenter.default.post(name: .zhihuScrollToTop, object: value)
+            }
+        )
     }
 }
 
@@ -137,9 +175,6 @@ final class SwiftUIFeedStore: ObservableObject {
 
 struct SwiftUIHomeView: View {
     @StateObject private var store = SwiftUIFeedStore()
-    @State private var showMessages = false
-    @State private var showCreation = false
-    @State private var showSearch = false
     @State private var showLogin = false
     @State private var actionMessage: String?
     @State private var isHomeVisible = false
@@ -147,66 +182,61 @@ struct SwiftUIHomeView: View {
     private let autoRefreshTimer = Timer.publish(every: 300, on: .main, in: .common).autoconnect()
 
     var body: some View {
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: 14) {
-                header
-                if let error = store.errorMessage, store.items.isEmpty {
-                    SwiftUIErrorCard(message: error) { store.load() }
-                }
-                if store.isLoading && store.items.isEmpty {
-                    ProgressView("正在加载知乎内容").frame(maxWidth: .infinity).padding(.vertical, 40)
-                }
-                ForEach(store.items, id: \.id) { item in
-                    SwiftUIFeedCardLink(
-                        item: item,
-                        onVote: {
-                            store.vote(item: item) { result in
-                                switch result {
-                                case .success:
-                                    actionMessage = item.isVoted ? "已取消赞同" : "已赞同"
-                                case let .failure(error):
-                                    if let sessionError = error as? ZhihuSessionError,
-                                       case .authenticationRequired = sessionError {
-                                        showLogin = true
-                                    } else {
-                                        actionMessage = error.localizedDescription
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 14) {
+                    header.id("home-top")
+                    if let error = store.errorMessage, store.items.isEmpty {
+                        SwiftUIErrorCard(message: error) { store.load() }
+                    }
+                    if store.isLoading && store.items.isEmpty {
+                        ProgressView("正在加载知乎内容").frame(maxWidth: .infinity).padding(.vertical, 40)
+                    }
+                    ForEach(store.items, id: \.id) { item in
+                        SwiftUIFeedCardLink(
+                            item: item,
+                            onVote: {
+                                store.vote(item: item) { result in
+                                    switch result {
+                                    case .success:
+                                        actionMessage = item.isVoted ? "已取消赞同" : "已赞同"
+                                    case let .failure(error):
+                                        if let sessionError = error as? ZhihuSessionError,
+                                           case .authenticationRequired = sessionError {
+                                            showLogin = true
+                                        } else {
+                                            actionMessage = error.localizedDescription
+                                        }
                                     }
                                 }
                             }
+                        )
+                        .onAppear {
+                            if item.id == store.items.last?.id { store.loadMore() }
                         }
-                    )
-                    .onAppear {
-                        if item.id == store.items.last?.id { store.loadMore() }
+                    }
+                    if store.isLoadingMore {
+                        ProgressView("正在加载更多").frame(maxWidth: .infinity).padding(.vertical, 12)
+                    }
+                    if !store.isLoading && store.items.isEmpty && store.errorMessage == nil {
+                        SwiftUIEmptyState(title: "暂时没有内容", systemImage: "tray")
                     }
                 }
-                if store.isLoadingMore {
-                    ProgressView("正在加载更多").frame(maxWidth: .infinity).padding(.vertical, 12)
-                }
-                if !store.isLoading && store.items.isEmpty && store.errorMessage == nil {
-                    SwiftUIEmptyState(title: "暂时没有内容", systemImage: "tray")
+                .frame(maxWidth: 860)
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, horizontalSizeClass == .regular ? 28 : 14)
+                .padding(.vertical, 12)
+            }
+            .background(Color(uiColor: .systemGroupedBackground).ignoresSafeArea())
+            .refreshable { await store.refresh() }
+            .onReceive(NotificationCenter.default.publisher(for: .zhihuScrollToTop)) { notification in
+                guard let tab = notification.object as? Int, tab == 0 else { return }
+                withAnimation(.easeOut(duration: 0.25)) {
+                    proxy.scrollTo("home-top", anchor: .top)
                 }
             }
-            .frame(maxWidth: 860)
-            .frame(maxWidth: .infinity)
-            .padding(.horizontal, horizontalSizeClass == .regular ? 28 : 14)
-            .padding(.vertical, 12)
         }
-        .background(Color(uiColor: .systemGroupedBackground).ignoresSafeArea())
-        .refreshable { await store.refresh() }
         .navigationTitle("知乎")
-        .toolbar {
-            ToolbarItemGroup(placement: .navigationBarTrailing) {
-                Button { showSearch = true } label: { Image(systemName: "magnifyingglass") }
-                    .accessibilityLabel("搜索")
-                Button { Task { await store.refresh() } } label: { Image(systemName: "arrow.clockwise") }
-                    .disabled(store.isLoading)
-                    .accessibilityLabel("刷新")
-                Button { showCreation = true } label: { Image(systemName: "square.and.pencil") }
-                    .accessibilityLabel("开始创作")
-                Button { showMessages = true } label: { Image(systemName: "bell") }
-                    .accessibilityLabel("知乎消息")
-            }
-        }
         .onAppear {
             isHomeVisible = true
             if !store.hasLoaded { store.load() }
@@ -222,14 +252,9 @@ struct SwiftUIHomeView: View {
             guard isHomeVisible else { return }
             Task { await store.refresh() }
         }
-        .sheet(isPresented: $showMessages) {
-            UIKitNavigationScreen { MessagesViewController() }
-        }
-        .sheet(isPresented: $showCreation) {
-            UIKitNavigationScreen { RichTextEditorViewController(mode: .pin) }
-        }
-        .sheet(isPresented: $showSearch) {
-            UIKitNavigationScreen { SearchViewController() }
+        .onReceive(NotificationCenter.default.publisher(for: .zhihuRefreshHome)) { _ in
+            guard isHomeVisible else { return }
+            Task { await store.refresh() }
         }
         .sheet(isPresented: $showLogin) {
             UIKitNavigationScreen { LoginViewController() }
@@ -1121,28 +1146,37 @@ struct SwiftUIProfileView: View {
 
     var body: some View {
         GeometryReader { geometry in
-            ScrollView(.vertical, showsIndicators: true) {
-                VStack(alignment: .leading, spacing: 16) {
-                    profileHeader
-                    if store.isLoggedIn {
-                        profileTabs
-                        if let error = store.errorMessage {
-                            SwiftUIErrorCard(message: error) { store.load(tab: store.tab) }
+            ScrollViewReader { proxy in
+                ScrollView(.vertical, showsIndicators: true) {
+                    VStack(alignment: .leading, spacing: 16) {
+                        profileHeader
+                        if store.isLoggedIn {
+                            profileTabs
+                            if let error = store.errorMessage {
+                                SwiftUIErrorCard(message: error) { store.load(tab: store.tab) }
+                            }
+                            if store.isLoading && store.items.isEmpty { ProgressView("正在读取你的内容").frame(maxWidth: .infinity).padding(30) }
+                            ForEach(store.items, id: \.id) { item in
+                                SwiftUIFeedCardLink(item: item)
+                            }
+                            if store.items.isEmpty && !store.isLoading { SwiftUIEmptyState(title: "这里还没有公开内容", systemImage: "doc.text") }
+                        } else {
+                            SwiftUIEmptyState(title: "登录后同步你的知乎内容", systemImage: "person.crop.circle")
+                            Button("登录知乎") { showLogin = true }.buttonStyle(.borderedProminent).frame(maxWidth: .infinity)
                         }
-                        if store.isLoading && store.items.isEmpty { ProgressView("正在读取你的内容").frame(maxWidth: .infinity).padding(30) }
-                        ForEach(store.items, id: \.id) { item in
-                            SwiftUIFeedCardLink(item: item)
-                        }
-                        if store.items.isEmpty && !store.isLoading { SwiftUIEmptyState(title: "这里还没有公开内容", systemImage: "doc.text") }
-                    } else {
-                        SwiftUIEmptyState(title: "登录后同步你的知乎内容", systemImage: "person.crop.circle")
-                        Button("登录知乎") { showLogin = true }.buttonStyle(.borderedProminent).frame(maxWidth: .infinity)
+                        management
                     }
-                    management
+                    .id("profile-top")
+                    .frame(width: min(860, max(0, geometry.size.width - 32)), alignment: .leading)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, 14)
                 }
-                .frame(width: min(860, max(0, geometry.size.width - 32)), alignment: .leading)
-                .frame(maxWidth: .infinity, alignment: .center)
-                .padding(.vertical, 14)
+                .onReceive(NotificationCenter.default.publisher(for: .zhihuScrollToTop)) { notification in
+                    guard let tab = notification.object as? Int, tab == 2 else { return }
+                    withAnimation(.easeOut(duration: 0.25)) {
+                        proxy.scrollTo("profile-top", anchor: .top)
+                    }
+                }
             }
         }
         .background(Color(uiColor: .systemGroupedBackground).ignoresSafeArea())
@@ -1283,12 +1317,26 @@ final class SwiftUIProfileStore: ObservableObject {
 struct SwiftUICollectionView: View {
     @State private var items = Array(SampleData.recommendations.prefix(3))
     var body: some View {
-        ScrollView { LazyVStack(spacing: 14) { ForEach(items, id: \.id) { item in SwiftUIFeedCardLink(item: item) } }.padding(16) }
-            .background(Color(uiColor: .systemGroupedBackground).ignoresSafeArea())
-            .navigationTitle("收藏")
-            .onAppear {
-                load()
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(spacing: 14) {
+                    Color.clear.frame(height: 1).id("collection-top")
+                    ForEach(items, id: \.id) { item in SwiftUIFeedCardLink(item: item) }
+                }
+                .padding(16)
             }
+            .background(Color(uiColor: .systemGroupedBackground).ignoresSafeArea())
+            .onReceive(NotificationCenter.default.publisher(for: .zhihuScrollToTop)) { notification in
+                guard let tab = notification.object as? Int, tab == 1 else { return }
+                withAnimation(.easeOut(duration: 0.25)) {
+                    proxy.scrollTo("collection-top", anchor: .top)
+                }
+            }
+        }
+        .navigationTitle("收藏")
+        .onAppear {
+            load()
+        }
     }
     private func load() { guard ZhihuAccountStore.shared.load()?.isLoggedIn == true else { return }; RemoteLibraryRepository.shared.fetchSavedItems { result in if case let .success(value) = result, !value.isEmpty { items = value } } }
 }

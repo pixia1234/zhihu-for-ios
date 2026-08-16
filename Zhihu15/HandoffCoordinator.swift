@@ -3,6 +3,8 @@ import UIKit
 
 extension Notification.Name {
     static let zhihuHandoffOpenItem = Notification.Name("ZhihuHandoffOpenItem")
+    static let zhihuScrollToTop = Notification.Name("ZhihuScrollToTop")
+    static let zhihuRefreshHome = Notification.Name("ZhihuRefreshHome")
 }
 
 final class HandoffCoordinator {
