@@ -239,26 +239,6 @@ struct SwiftUIHomeView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 10) {
-                Image(systemName: "sparkles").foregroundColor(.white)
-                    .frame(width: 34, height: 34)
-                    .background(Color(red: 0.08, green: 0.38, blue: 0.86), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("探索你的知乎").font(.headline)
-                    Text("回答、文章、想法与热榜，一处浏览").font(.caption).foregroundColor(.secondary)
-                }
-                Spacer()
-            }
-            Button { showSearch = true } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: "magnifyingglass").foregroundColor(.secondary)
-                    Text("搜索问题、话题或用户").foregroundColor(.secondary)
-                    Spacer()
-                }
-            }
-            .buttonStyle(.plain)
-            .padding(.horizontal, 14).frame(height: 44)
-            .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             Picker("内容频道", selection: Binding(get: { store.channel.rawValue }, set: { store.load(channel: HomeChannel(rawValue: $0) ?? .recommendation) })) {
                 Text("推荐").tag(0); Text("关注").tag(1); Text("热榜").tag(2); Text("日报").tag(3)
             }
@@ -538,6 +518,14 @@ struct SwiftUIDetailView: View {
     var body: some View {
         detailScrollView
         .background(Color(uiColor: .systemBackground).ignoresSafeArea())
+        // The system bottom bar is a UIToolbar owned by the navigation
+        // controller: on iOS 15 it is shown/hidden separately from the page,
+        // so it does not slide in parallel during push/pop, and it can render
+        // without the material. Drawing the bar inside the page keeps both the
+        // transition and the blur consistent across iOS 15/16.
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            detailBottomBar
+        }
         .navigationTitle(store.title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -547,20 +535,21 @@ struct SwiftUIDetailView: View {
                         .accessibilityLabel("播放")
                 }
                 Button {
-                    if let url = store.canonicalURL { openContentURL(url) }
+                    if let url = store.canonicalURL { openInBrowser(url) }
                 } label: { Image(systemName: "safari") }
-                    .accessibilityLabel("在知乎打开")
-            }
-            ToolbarItemGroup(placement: .bottomBar) {
-                detailVoteToolbarButton
-                Spacer()
-                detailCommentsToolbarButton
-                Spacer()
-                detailCollectionToolbarButton
+                    .accessibilityLabel("在浏览器打开本回答")
+                    .help("在浏览器打开本回答")
             }
         }
         .onAppear {
             store.load()
+            AppTheme.refreshLiveAppearance()
+            DispatchQueue.main.async {
+                AppTheme.refreshLiveAppearance()
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                AppTheme.refreshLiveAppearance()
+            }
         }
         .alert(isPresented: Binding(
             get: { store.actionMessage != nil },
@@ -747,6 +736,21 @@ struct SwiftUIDetailView: View {
         .accessibilityLabel("收藏，\(max(0, store.favoriteCount))")
     }
 
+    private var detailBottomBar: some View {
+        HStack(spacing: 0) {
+            detailVoteToolbarButton
+            Spacer()
+            detailCommentsToolbarButton
+            Spacer()
+            detailCollectionToolbarButton
+        }
+        .padding(.horizontal, 16)
+        .frame(height: 44)
+        .frame(maxWidth: .infinity)
+        .background(.bar)
+        .overlay(alignment: .top) { Divider() }
+    }
+
     private var collectionPicker: some View {
         NavigationView {
             Group {
@@ -786,6 +790,11 @@ struct SwiftUIDetailView: View {
         } else {
             UIApplication.shared.open(url)
         }
+    }
+
+    private func openInBrowser(_ url: URL) {
+        guard let scheme = url.scheme?.lowercased(), scheme == "http" || scheme == "https" else { return }
+        UIApplication.shared.open(url, options: [:])
     }
 }
 

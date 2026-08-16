@@ -9,11 +9,13 @@ enum AppTheme {
 
     static func configureNavigationBar(_ navigationBar: UINavigationBar) {
         let appearance = UINavigationBarAppearance()
-        appearance.configureWithDefaultBackground()
-        appearance.backgroundColor = .systemBackground
-        appearance.shadowColor = .clear
+        appearance.configureWithTransparentBackground()
+        appearance.backgroundEffect = UIBlurEffect(style: .systemMaterial)
+        appearance.backgroundColor = UIColor.systemBackground.withAlphaComponent(0.22)
+        appearance.shadowColor = border
         appearance.titleTextAttributes = [.foregroundColor: text]
         appearance.largeTitleTextAttributes = [.foregroundColor: text]
+        navigationBar.isTranslucent = true
         navigationBar.standardAppearance = appearance
         navigationBar.scrollEdgeAppearance = appearance
         navigationBar.compactAppearance = appearance
@@ -36,7 +38,7 @@ enum AppTheme {
 
     static func configureToolbar(_ toolbar: UIToolbar) {
         let appearance = UIToolbarAppearance()
-        appearance.configureWithDefaultBackground()
+        appearance.configureWithTransparentBackground()
         appearance.backgroundEffect = UIBlurEffect(style: .systemMaterial)
         appearance.backgroundColor = UIColor.systemBackground.withAlphaComponent(0.22)
         appearance.shadowColor = border
@@ -45,6 +47,17 @@ enum AppTheme {
         toolbar.compactAppearance = appearance
         toolbar.scrollEdgeAppearance = appearance
         toolbar.tintColor = zhihuBlue
+    }
+
+    static func configureNavigationBars(in root: UIViewController?) {
+        guard let root else { return }
+        configureNavigationBars(in: root.view)
+        for child in root.children {
+            configureNavigationBars(in: child)
+        }
+        if let presented = root.presentedViewController {
+            configureNavigationBars(in: presented)
+        }
     }
 
     /// SwiftUI's TabView owns the concrete UITabBar instance. Appearance
@@ -72,6 +85,28 @@ enum AppTheme {
         }
     }
 
+    /// SwiftUI creates the toolbar for a pushed detail page after the root
+    /// scene has appeared on iOS 15. Re-apply the material to those live UIKit
+    /// bars once the destination has entered the hierarchy.
+    static func refreshLiveAppearance() {
+        let apply = {
+            let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+            for scene in scenes {
+                for window in scene.windows {
+                    guard let root = window.rootViewController else { continue }
+                    configureNavigationBars(in: root)
+                    configureTabBars(in: root)
+                    configureToolbars(in: root)
+                }
+            }
+        }
+        if Thread.isMainThread {
+            apply()
+        } else {
+            DispatchQueue.main.async(execute: apply)
+        }
+    }
+
     private static func configureTabBars(in view: UIView?) {
         guard let view else { return }
         if let tabBar = view as? UITabBar {
@@ -79,6 +114,16 @@ enum AppTheme {
         }
         for subview in view.subviews {
             configureTabBars(in: subview)
+        }
+    }
+
+    private static func configureNavigationBars(in view: UIView?) {
+        guard let view else { return }
+        if let navigationBar = view as? UINavigationBar {
+            configureNavigationBar(navigationBar)
+        }
+        for subview in view.subviews {
+            configureNavigationBars(in: subview)
         }
     }
 

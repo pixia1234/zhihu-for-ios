@@ -33,6 +33,9 @@ final class RichContentView: UIView, WKNavigationDelegate {
         webView.scrollView.showsHorizontalScrollIndicator = false
         webView.scrollView.contentInsetAdjustmentBehavior = .never
         webView.scrollView.contentInset = .zero
+        webView.scrollView.minimumZoomScale = 1
+        webView.scrollView.maximumZoomScale = 1
+        webView.scrollView.pinchGestureRecognizer?.isEnabled = false
         webView.translatesAutoresizingMaskIntoConstraints = false
         addSubview(webView)
         heightConstraint = webView.heightAnchor.constraint(equalToConstant: 1)
@@ -179,7 +182,7 @@ private enum RichContentHTML {
         let content = looksLikeHTML(source) ? sanitizeHTML(source) : markdownHTML(source)
         return """
         <!doctype html>
-        <html><head><meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <html><head><meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
         <style>
         :root { color-scheme: light dark; }
         * { box-sizing: border-box; }
