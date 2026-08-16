@@ -59,7 +59,9 @@ final class RemoteContentRepository {
         let authorName = string(author?["name"]) ?? fallback.author
         let headline = string(author?["headline"]) ?? fallback.authorRole
         let image = ZhihuMediaURL.from(root["image_url"] ?? root["imageUrl"]) ?? fallback.thumbnailURL
-        let canonicalURL = (string(root["url"]) ?? string(root["url_token"])).flatMap(URL.init(string:)) ?? Self.canonicalURLForDisplay(fallback)
+        // The API's `url` field can itself be an /api/v4/... endpoint. The
+        // browser button must always receive the public Zhihu page URL.
+        let canonicalURL = Self.publicURL(from: root, fallback: fallback)
         let relation = (root["reaction"] as? [String: Any])?["relation"] as? [String: Any] ?? root["relationship"] as? [String: Any]
         let isVoted: Bool? = relation == nil ? nil : ((relation?["voting"] as? NSNumber)?.intValue == 1 || string(relation?["vote"])?.lowercased() == "up")
         let upvoteCount = (root["voteup_count"] as? NSNumber)?.intValue ?? fallback.upvotes
@@ -98,6 +100,31 @@ final class RemoteContentRepository {
         case .question: return URL(string: "https://www.zhihu.com/question/\(id)")
         case .article: return URL(string: "https://zhuanlan.zhihu.com/p/\(id)")
         case .video: return URL(string: "https://www.zhihu.com/zvideo/\(id)")
+        }
+    }
+
+    private static func publicURL(from root: [String: Any], fallback: FeedItem) -> URL? {
+        switch fallback.kind {
+        case .answer:
+            let answerID = int(root["id"]).map(Int64.init) ?? fallback.contentID
+            let question = root["question"] as? [String: Any]
+            let questionID = int(root["question_id"]).map(Int64.init)
+                ?? int(question?["id"]).map(Int64.init)
+                ?? fallback.questionID
+            guard let answerID, let questionID, answerID > 0, questionID > 0 else {
+                return canonicalURLForDisplay(fallback)
+            }
+            return URL(string: "https://www.zhihu.com/question/\(questionID)/answer/\(answerID)")
+        case .question:
+            let questionID = int(root["id"]).map(Int64.init) ?? fallback.contentID
+            guard let questionID, questionID > 0 else { return canonicalURLForDisplay(fallback) }
+            return URL(string: "https://www.zhihu.com/question/\(questionID)")
+        case .article:
+            let articleID = int(root["id"]).map(Int64.init) ?? fallback.contentID
+            guard let articleID, articleID > 0 else { return canonicalURLForDisplay(fallback) }
+            return URL(string: "https://zhuanlan.zhihu.com/p/\(articleID)")
+        case .video:
+            return canonicalURLForDisplay(fallback)
         }
     }
 }

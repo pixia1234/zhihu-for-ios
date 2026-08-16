@@ -377,7 +377,14 @@ final class SwiftUIDetailStore: ObservableObject {
         return markup
     }
     var imageURL: URL? { content?.imageURL ?? item.thumbnailURL }
-    var canonicalURL: URL? { content?.canonicalURL ?? RemoteContentRepository.canonicalURLForDisplay(item) }
+    var canonicalURL: URL? {
+        if let url = content?.canonicalURL,
+           url.host?.lowercased() != "api.zhihu.com",
+           !url.path.lowercased().contains("/api/") {
+            return url
+        }
+        return RemoteContentRepository.canonicalURLForDisplay(item)
+    }
     var comments: Int { max(0, item.comments) }
 
     func load() {
