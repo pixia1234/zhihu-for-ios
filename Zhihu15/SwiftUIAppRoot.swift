@@ -612,6 +612,7 @@ struct SwiftUIDetailView: View {
             }
         }
         .onAppear {
+            HandoffCoordinator.shared.start(item: item)
             store.load()
             AppTheme.refreshLiveAppearance()
             DispatchQueue.main.async {
@@ -620,6 +621,9 @@ struct SwiftUIDetailView: View {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
                 AppTheme.refreshLiveAppearance()
             }
+        }
+        .onDisappear {
+            HandoffCoordinator.shared.stop(item: item)
         }
         .alert(isPresented: Binding(
             get: { store.actionMessage != nil },

@@ -13,44 +13,62 @@ final class HandoffCoordinator {
     static let activityType = "com.pixia.zhihu15.client.handoff.content"
 
     private var currentActivity: NSUserActivity?
+    private var currentContentID: Int64?
 
     private init() {}
 
     func start(item: FeedItem) {
         guard let contentID = item.contentID, contentID > 0 else { return }
-        let activity = NSUserActivity(activityType: Self.activityType)
-        activity.title = item.title.isEmpty ? "知乎内容" : item.title
-        activity.userInfo = [
-            "contentID": NSNumber(value: contentID),
-            "kind": item.kind.rawValue,
-            "id": item.id,
-            "title": item.title,
-            "excerpt": item.excerpt,
-            "topic": item.topic,
-            "author": item.author,
-            "authorRole": item.authorRole,
-            "upvotes": item.upvotes,
-            "comments": item.comments,
-            "isVoted": item.isVoted,
-            "questionID": NSNumber(value: item.questionID ?? 0)
-        ]
-        activity.webpageURL = RemoteContentRepository.canonicalURLForDisplay(item)
-        activity.isEligibleForHandoff = true
-        activity.isEligibleForSearch = true
-        activity.isEligibleForPublicIndexing = false
-        currentActivity?.resignCurrent()
-        currentActivity = activity
-        activity.becomeCurrent()
+        let activate = { [weak self] in
+            guard let self else { return }
+            let activity = NSUserActivity(activityType: Self.activityType)
+            activity.title = item.title.isEmpty ? "知乎内容" : item.title
+            activity.userInfo = [
+                "contentID": NSNumber(value: contentID),
+                "kind": item.kind.rawValue,
+                "id": item.id,
+                "title": item.title,
+                "excerpt": item.excerpt,
+                "topic": item.topic,
+                "author": item.author,
+                "authorRole": item.authorRole,
+                "upvotes": item.upvotes,
+                "comments": item.comments,
+                "isVoted": item.isVoted,
+                "questionID": NSNumber(value: item.questionID ?? 0)
+            ]
+            activity.webpageURL = RemoteContentRepository.canonicalURLForDisplay(item)
+            activity.isEligibleForHandoff = true
+            activity.isEligibleForSearch = true
+            activity.isEligibleForPublicIndexing = false
+            self.currentActivity?.resignCurrent()
+            self.currentActivity = activity
+            self.currentContentID = contentID
+            activity.becomeCurrent()
+        }
+        if Thread.isMainThread {
+            activate()
+        } else {
+            DispatchQueue.main.async(execute: activate)
+        }
     }
 
     func stop() {
         currentActivity?.resignCurrent()
         currentActivity = nil
+        currentContentID = nil
+    }
+
+    func stop(item: FeedItem) {
+        guard let contentID = item.contentID, contentID == currentContentID else { return }
+        stop()
     }
 
     func handle(_ activity: NSUserActivity) {
-        guard activity.activityType == Self.activityType,
-              let item = Self.item(from: activity.userInfo) else { return }
+        guard activity.activityType == Self.activityType else { return }
+        let item = Self.item(from: activity.userInfo)
+            ?? Self.item(from: activity.webpageURL, title: activity.title)
+        guard let item else { return }
         DispatchQueue.main.async {
             NotificationCenter.default.post(name: .zhihuHandoffOpenItem, object: item)
         }
@@ -78,6 +96,56 @@ final class HandoffCoordinator {
             hasImage: false,
             imageColor: AppTheme.zhihuBlue.withAlphaComponent(0.08),
             isVoted: bool(userInfo["isVoted"]) ?? false,
+            contentID: contentID,
+            questionID: questionID
+        )
+    }
+
+    private static func item(from url: URL?, title: String?) -> FeedItem? {
+        guard let url else { return nil }
+        let host = url.host?.lowercased() ?? ""
+        let parts = url.path.split(separator: "/").map(String.init)
+        let fallbackTitle = title?.isEmpty == false ? title! : "知乎内容"
+
+        if host == "zhuanlan.zhihu.com", parts.count >= 2, parts[0] == "p",
+           let contentID = Int64(parts[1]), contentID > 0 {
+            return makeItem(kind: .article, contentID: contentID, title: fallbackTitle)
+        }
+
+        guard host == "www.zhihu.com" || host == "zhihu.com" else { return nil }
+        if parts.count >= 4, parts[0] == "question", parts[2] == "answer",
+           let questionID = Int64(parts[1]), let answerID = Int64(parts[3]),
+           questionID > 0, answerID > 0 {
+            return makeItem(kind: .answer, contentID: answerID, title: fallbackTitle, questionID: questionID)
+        }
+        if parts.count >= 2, parts[0] == "question", let questionID = Int64(parts[1]), questionID > 0 {
+            return makeItem(kind: .question, contentID: questionID, title: fallbackTitle)
+        }
+        if parts.count >= 2, parts[0] == "zvideo", let contentID = Int64(parts[1]), contentID > 0 {
+            return makeItem(kind: .video, contentID: contentID, title: fallbackTitle)
+        }
+        return nil
+    }
+
+    private static func makeItem(
+        kind: FeedItem.Kind,
+        contentID: Int64,
+        title: String,
+        questionID: Int64? = nil
+    ) -> FeedItem {
+        FeedItem(
+            id: Int(contentID),
+            kind: kind,
+            author: "知乎用户",
+            authorRole: "知乎创作者",
+            avatarColor: AppTheme.zhihuBlue,
+            title: title,
+            excerpt: "打开查看完整内容",
+            topic: "知乎",
+            upvotes: 0,
+            comments: 0,
+            hasImage: false,
+            imageColor: AppTheme.zhihuBlue.withAlphaComponent(0.08),
             contentID: contentID,
             questionID: questionID
         )

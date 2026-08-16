@@ -7,6 +7,21 @@ enum AppTheme {
     static let card = UIColor.secondarySystemGroupedBackground
     static let border = UIColor.separator.withAlphaComponent(0.35)
 
+    /// Gives vote and unvote actions a small, consistent tactile response.
+    /// UIKit feedback generators must be driven on the main thread.
+    static func performVoteHaptic() {
+        let trigger = {
+            let generator = UIImpactFeedbackGenerator(style: .light)
+            generator.prepare()
+            generator.impactOccurred()
+        }
+        if Thread.isMainThread {
+            trigger()
+        } else {
+            DispatchQueue.main.async(execute: trigger)
+        }
+    }
+
     static func configureNavigationBar(_ navigationBar: UINavigationBar) {
         let appearance = UINavigationBarAppearance()
         appearance.configureWithTransparentBackground()

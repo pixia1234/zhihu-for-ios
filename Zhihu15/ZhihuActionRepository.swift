@@ -41,6 +41,7 @@ final class ZhihuActionRepository {
             switch result {
             case let .failure(error): completion(.failure(error))
             case let .success(data):
+                AppTheme.performVoteHaptic()
                 let count = Self.voteCount(from: data)
                 completion(.success(ZhihuVoteMutation(isVoted: up, upvoteCount: count)))
             }
@@ -55,7 +56,10 @@ final class ZhihuActionRepository {
     func likeComment(commentID: String, liked: Bool, completion: @escaping (Result<Void, Error>) -> Void) {
         let encoded = commentID.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? commentID
         let url = URL(string: "https://www.zhihu.com/api/v4/comments/\(encoded)/like")!
-        client.request(url, method: liked ? "POST" : "DELETE", requiresLogin: true) { result in completion(result.map { _ in () }) }
+        client.request(url, method: liked ? "POST" : "DELETE", requiresLogin: true) { result in
+            if case .success = result { AppTheme.performVoteHaptic() }
+            completion(result.map { _ in () })
+        }
     }
 
     func fetchCollections(for item: FeedItem, completion: @escaping (Result<[ZhihuCollectionOption], Error>) -> Void) {
