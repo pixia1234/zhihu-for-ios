@@ -26,19 +26,13 @@ struct SwiftUIAppRootView: View {
             .accentColor(Color(red: 0.08, green: 0.38, blue: 0.86))
             .background(SwiftUIHandoffDetailLink(route: $detailRoute))
             .toolbar {
-                if selectedTab == 0 {
-                    ToolbarItemGroup(placement: .navigationBarTrailing) {
-                        Button { showSearch = true } label: { Image(systemName: "magnifyingglass") }
-                            .accessibilityLabel("搜索")
-                        Button {
-                            NotificationCenter.default.post(name: .zhihuRefreshHome, object: nil)
-                        } label: { Image(systemName: "arrow.clockwise") }
-                            .accessibilityLabel("刷新")
-                        Button { showCreation = true } label: { Image(systemName: "square.and.pencil") }
-                            .accessibilityLabel("开始创作")
-                        Button { showMessages = true } label: { Image(systemName: "bell") }
-                            .accessibilityLabel("知乎消息")
-                    }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    SwiftUIHomeToolbarActions(
+                        selectedTab: selectedTab,
+                        showSearch: $showSearch,
+                        showCreation: $showCreation,
+                        showMessages: $showMessages
+                    )
                 }
             }
             .sheet(isPresented: $showMessages) {
@@ -68,6 +62,43 @@ struct SwiftUIAppRootView: View {
                 NotificationCenter.default.post(name: .zhihuScrollToTop, object: value)
             }
         )
+    }
+}
+
+private struct SwiftUIHomeToolbarActions: View {
+    let selectedTab: Int
+    @Binding var showSearch: Bool
+    @Binding var showCreation: Bool
+    @Binding var showMessages: Bool
+
+    var body: some View {
+        Group {
+            if selectedTab == 0 {
+                HStack(spacing: 12) {
+                    Button { showSearch = true } label: {
+                        Image(systemName: "magnifyingglass")
+                    }
+                    .accessibilityLabel("搜索")
+
+                    Button {
+                        NotificationCenter.default.post(name: .zhihuRefreshHome, object: nil)
+                    } label: {
+                        Image(systemName: "arrow.clockwise")
+                    }
+                    .accessibilityLabel("刷新")
+
+                    Button { showCreation = true } label: {
+                        Image(systemName: "square.and.pencil")
+                    }
+                    .accessibilityLabel("开始创作")
+
+                    Button { showMessages = true } label: {
+                        Image(systemName: "bell")
+                    }
+                    .accessibilityLabel("知乎消息")
+                }
+            }
+        }
     }
 }
 
