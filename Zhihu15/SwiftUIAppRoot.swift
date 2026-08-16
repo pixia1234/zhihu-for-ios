@@ -142,6 +142,7 @@ struct SwiftUIHomeView: View {
     @State private var showSearch = false
     @State private var showLogin = false
     @State private var actionMessage: String?
+    @State private var isHomeVisible = false
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     private let autoRefreshTimer = Timer.publish(every: 300, on: .main, in: .common).autoconnect()
 
@@ -207,12 +208,18 @@ struct SwiftUIHomeView: View {
             }
         }
         .onAppear {
+            isHomeVisible = true
             if !store.hasLoaded { store.load() }
         }
+        .onDisappear {
+            isHomeVisible = false
+        }
         .onReceive(autoRefreshTimer) { _ in
+            guard isHomeVisible else { return }
             Task { await store.refresh() }
         }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+            guard isHomeVisible else { return }
             Task { await store.refresh() }
         }
         .sheet(isPresented: $showMessages) {
