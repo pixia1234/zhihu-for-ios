@@ -49,7 +49,6 @@ final class SearchViewController: UIViewController {
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        AppTheme.setTabBarHidden(false)
         if navigationController?.viewControllers.last === self {
             searchController.searchBar.becomeFirstResponder()
         }

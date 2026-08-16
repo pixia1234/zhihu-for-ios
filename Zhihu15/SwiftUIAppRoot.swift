@@ -3,36 +3,32 @@ import UIKit
 
 struct SwiftUIAppRootView: View {
     @State private var selectedTab = 0
-    @State private var isTabBarHidden = false
+    @State private var detailRoute: SwiftUIDetailRoute?
 
     var body: some View {
-        TabView(selection: $selectedTab) {
-            NavigationView { SwiftUIHomeView() }
-                .navigationViewStyle(StackNavigationViewStyle())
-                .tabItem { Label("首页", systemImage: "house") }
-                .tag(0)
+        NavigationView {
+            TabView(selection: $selectedTab) {
+                SwiftUIHomeView()
+                    .tabItem { Label("首页", systemImage: "house") }
+                    .tag(0)
 
-            NavigationView { SwiftUICollectionView() }
-                .navigationViewStyle(StackNavigationViewStyle())
-                .tabItem { Label("收藏", systemImage: "bookmark") }
-                .tag(1)
+                SwiftUICollectionView()
+                    .tabItem { Label("收藏", systemImage: "bookmark") }
+                    .tag(1)
 
-            NavigationView { SwiftUIProfileView() }
-                .navigationViewStyle(StackNavigationViewStyle())
-                .tabItem { Label("我的", systemImage: "person.crop.circle") }
-                .tag(2)
+                SwiftUIProfileView()
+                    .tabItem { Label("我的", systemImage: "person.crop.circle") }
+                    .tag(2)
+            }
+            .accentColor(Color(red: 0.08, green: 0.38, blue: 0.86))
+            .background(SwiftUIHandoffDetailLink(route: $detailRoute))
         }
-        .accentColor(Color(red: 0.08, green: 0.38, blue: 0.86))
-        // Hiding UITabBar alone does not remove the safe-area reservation on
-        // iOS 15. Release the same bottom region from SwiftUI while a detail
-        // or answers page is pushed, so its native bottomBar sits at the
-        // actual bottom edge instead of above an invisible home tab bar.
-        .ignoresSafeArea(.container, edges: isTabBarHidden ? Edge.Set.bottom : Edge.Set())
-        .onReceive(NotificationCenter.default.publisher(for: .zhihuTabBarVisibilityChanged)) { notification in
-            isTabBarHidden = notification.userInfo?["hidden"] as? Bool ?? false
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .zhihuHandoffOpenItem)) { _ in
+        .navigationViewStyle(StackNavigationViewStyle())
+        .onReceive(NotificationCenter.default.publisher(for: .zhihuHandoffOpenItem)) { notification in
             selectedTab = 0
+            if let item = notification.object as? FeedItem {
+                detailRoute = SwiftUIDetailRoute(item: item)
+            }
         }
     }
 }
@@ -141,7 +137,6 @@ final class SwiftUIFeedStore: ObservableObject {
 
 struct SwiftUIHomeView: View {
     @StateObject private var store = SwiftUIFeedStore()
-    @State private var detailRoute: SwiftUIDetailRoute?
     @State private var showMessages = false
     @State private var showCreation = false
     @State private var showSearch = false
@@ -212,7 +207,6 @@ struct SwiftUIHomeView: View {
             }
         }
         .onAppear {
-            AppTheme.setTabBarHidden(false)
             if !store.hasLoaded { store.load() }
         }
         .onReceive(autoRefreshTimer) { _ in
@@ -221,12 +215,6 @@ struct SwiftUIHomeView: View {
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
             Task { await store.refresh() }
         }
-        .onReceive(NotificationCenter.default.publisher(for: .zhihuHandoffOpenItem)) { notification in
-            if let item = notification.object as? FeedItem {
-                detailRoute = SwiftUIDetailRoute(item: item)
-            }
-        }
-        .background(SwiftUIHandoffDetailLink(route: $detailRoute))
         .sheet(isPresented: $showMessages) {
             UIKitNavigationScreen { MessagesViewController() }
         }
@@ -572,7 +560,6 @@ struct SwiftUIDetailView: View {
             }
         }
         .onAppear {
-            AppTheme.setTabBarHidden(true)
             store.load()
         }
         .alert(isPresented: Binding(
@@ -987,7 +974,6 @@ struct SwiftUIAnswersView: View {
             }
         }
         .onAppear {
-            AppTheme.setTabBarHidden(true)
             if !store.hasLoaded { store.load() }
         }
         .sheet(isPresented: Binding(
@@ -1144,7 +1130,6 @@ struct SwiftUIProfileView: View {
             }
         }
         .onAppear {
-            AppTheme.setTabBarHidden(false)
             store.load()
         }
         .sheet(isPresented: $showLogin) { UIKitNavigationScreen { LoginViewController() } }
@@ -1279,7 +1264,6 @@ struct SwiftUICollectionView: View {
             .background(Color(uiColor: .systemGroupedBackground).ignoresSafeArea())
             .navigationTitle("收藏")
             .onAppear {
-                AppTheme.setTabBarHidden(false)
                 load()
             }
     }
